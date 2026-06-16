@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { SA_PROVINCES } from '@/types'
+import type { DashboardTerms } from '@/types'
 
-export default function NewProjectClient({ orgId }: { orgId: string }) {
+export default function NewProjectClient({ orgId, terms }: { orgId: string; terms: DashboardTerms }) {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
@@ -47,16 +48,16 @@ export default function NewProjectClient({ orgId }: { orgId: string }) {
   return (
     <div className="mx-auto max-w-lg px-4 pb-24 pt-6">
       <Link href="/projects" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" /> Projects
+        <ArrowLeft className="h-4 w-4" /> {terms.projects}
       </Link>
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">New project</h1>
-      <p className="mt-1 text-sm text-slate-500">A development, building or site you're snagging.</p>
+      <h1 className="text-2xl font-bold tracking-tight text-slate-900">New {terms.project.toLowerCase()}</h1>
+      <p className="mt-1 text-sm text-slate-500">Add a {terms.project.toLowerCase()} to start tracking {terms.issues.toLowerCase()}.</p>
 
       <form onSubmit={handleCreate} className="sf-card mt-5 space-y-4 p-5">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Project name</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{terms.project} name</label>
           <input type="text" required minLength={2} value={name} onChange={e => setName(e.target.value)}
-            placeholder="e.g. Waterfall Estate Phase 2" className="sf-input" />
+            placeholder={`Your ${terms.project.toLowerCase()} name`} className="sf-input" />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">Address <span className="font-normal text-slate-400">(optional)</span></label>
@@ -80,13 +81,13 @@ export default function NewProjectClient({ orgId }: { orgId: string }) {
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">Description <span className="font-normal text-slate-400">(optional)</span></label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-            placeholder="Notes about this project" className="sf-input resize-none" />
+            placeholder={`Notes about this ${terms.project.toLowerCase()}`} className="sf-input resize-none" />
         </div>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
 
         <button type="submit" disabled={loading || name.trim().length < 2} className="sf-btn-primary w-full disabled:opacity-60">
-          {loading ? 'Creating…' : 'Create project'}
+          {loading ? 'Creating…' : `Create ${terms.project.toLowerCase()}`}
         </button>
       </form>
     </div>
