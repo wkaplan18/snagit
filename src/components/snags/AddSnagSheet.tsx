@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { X, Camera, Sparkles, Loader2, ChevronDown } from 'lucide-react'
 import PhotoAnnotator from '@/components/snags/PhotoAnnotator'
 import { createClient } from '@/lib/supabase/client'
-import type { AISuggestion, Contractor, DashboardTerms, Room, SnagPriority } from '@/types'
+import type { AISuggestion, Contractor, DashboardTerms, OrgType, Room, SnagPriority } from '@/types'
 import { DEFAULT_ROOMS } from '@/types'
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   rooms: Room[]
   contractors: Contractor[]
   terms: DashboardTerms
+  orgType: OrgType
   orgId?: string // enables inline "add contractor" without leaving the sheet
   onClose: () => void
   onSaved: () => void
@@ -23,7 +24,8 @@ const BASE_CATEGORIES = ['paint', 'crack', 'tile', 'water', 'fitting', 'alignmen
 
 type Step = 'camera' | 'annotate' | 'ai_loading' | 'form'
 
-export default function AddSnagSheet({ projectId, unitId, rooms, contractors, terms, orgId, onClose, onSaved }: Props) {
+export default function AddSnagSheet({ projectId, unitId, rooms, contractors, terms, orgType, orgId, onClose, onSaved }: Props) {
+  const simplified = orgType === 'homeowner'
   const [step, setStep] = useState<Step>('camera')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -311,7 +313,7 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="e.g. Paint peeling on ceiling"
+                  placeholder="Title"
                   className="sf-input"
                   autoFocus={!aiSuggestion}
                 />
@@ -329,45 +331,49 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
                 />
               </div>
 
-              {/* Priority + Category row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Priority</label>
-                  <div className="relative">
-                    <select value={priority} onChange={e => setPriority(e.target.value as SnagPriority)} className="sf-input appearance-none pr-8">
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="critical">Critical</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
+              {/* Priority + Category row — hidden for simplified org types */}
+              {!simplified && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700">Priority</label>
+                      <div className="relative">
+                        <select value={priority} onChange={e => setPriority(e.target.value as SnagPriority)} className="sf-input appearance-none pr-8">
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
+                      <div className="relative">
+                        <select
+                          value={category}
+                          onChange={e => e.target.value === ADD_NEW ? setAddingCategory(true) : setCategory(e.target.value)}
+                          className="sf-input appearance-none pr-8 capitalize"
+                        >
+                          {[...BASE_CATEGORIES, ...customCategories].map(c => (
+                            <option key={c} value={c} className="capitalize">{c === 'hvac' ? 'HVAC' : c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                          ))}
+                          <option value={ADD_NEW}>+ Add new category…</option>
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
-                  <div className="relative">
-                    <select
-                      value={category}
-                      onChange={e => e.target.value === ADD_NEW ? setAddingCategory(true) : setCategory(e.target.value)}
-                      className="sf-input appearance-none pr-8 capitalize"
-                    >
-                      {[...BASE_CATEGORIES, ...customCategories].map(c => (
-                        <option key={c} value={c} className="capitalize">{c === 'hvac' ? 'HVAC' : c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                      ))}
-                      <option value={ADD_NEW}>+ Add new category…</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
-                  </div>
-                </div>
-              </div>
 
-              {addingCategory && (
-                <div className="flex gap-2">
-                  <input type="text" autoFocus value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
-                    placeholder="e.g. Roofing" className="sf-input flex-1" />
-                  <button type="button" onClick={addCategory} className="sf-btn-primary px-4 py-2 text-sm">Add</button>
-                  <button type="button" onClick={() => setAddingCategory(false)} className="sf-btn-secondary px-3 py-2 text-sm">✕</button>
-                </div>
+                  {addingCategory && (
+                    <div className="flex gap-2">
+                      <input type="text" autoFocus value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+                        placeholder="e.g. Roofing" className="sf-input flex-1" />
+                      <button type="button" onClick={addCategory} className="sf-btn-primary px-4 py-2 text-sm">Add</button>
+                      <button type="button" onClick={() => setAddingCategory(false)} className="sf-btn-secondary px-3 py-2 text-sm">✕</button>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Room */}

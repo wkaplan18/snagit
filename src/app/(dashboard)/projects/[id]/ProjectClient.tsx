@@ -31,7 +31,7 @@ interface ProjectInfo {
 
 const UNIT_TYPES: UnitType[] = ['apartment', 'house', 'townhouse', 'villa', 'penthouse', 'office', 'retail', 'other']
 
-function UnitSnags({ projectId, unitId, rooms, contractors, orgId, terms, bare = false }: { projectId: string; unitId: string; rooms: Room[]; contractors: Contractor[]; orgId: string; terms: DashboardTerms; bare?: boolean }) {
+function UnitSnags({ projectId, unitId, rooms, contractors, orgId, terms, orgType, bare = false }: { projectId: string; unitId: string; rooms: Room[]; contractors: Contractor[]; orgId: string; terms: DashboardTerms; orgType: OrgType; bare?: boolean }) {
   const { snags, loading, refetch } = useSnags({ unitId })
   const [adding, setAdding] = useState(false)
 
@@ -56,6 +56,7 @@ function UnitSnags({ projectId, unitId, rooms, contractors, orgId, terms, bare =
           rooms={rooms}
           contractors={contractors}
           terms={terms}
+          orgType={orgType}
           orgId={orgId}
           onClose={() => setAdding(false)}
           onSaved={() => { setAdding(false); refetch() }}
@@ -132,7 +133,7 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
         </div>
         {unit ? (
           <div className="mt-6">
-            <UnitSnags projectId={project.id} unitId={unit.id} rooms={unit.rooms} contractors={contractors} orgId={project.org_id} terms={terms} bare />
+            <UnitSnags projectId={project.id} unitId={unit.id} rooms={unit.rooms} contractors={contractors} orgId={project.org_id} terms={terms} orgType={orgType} bare />
           </div>
         ) : (
           <p className="mt-6 text-sm text-slate-400">Setting up your home…</p>
@@ -218,7 +219,7 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                   </div>
                   {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                 </button>
-                {open && <UnitSnags projectId={project.id} unitId={u.id} rooms={u.rooms} contractors={contractors} orgId={project.org_id} terms={terms} />}
+                {open && <UnitSnags projectId={project.id} unitId={u.id} rooms={u.rooms} contractors={contractors} orgId={project.org_id} terms={terms} orgType={orgType} />}
               </div>
             )
           })}
