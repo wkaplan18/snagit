@@ -5,7 +5,6 @@ import { Camera, CheckCircle, Clock, AlertTriangle, Loader2, ChevronDown, Chevro
 import { PRIORITY_CONFIG } from '@/types'
 import { compressImage } from '@/lib/compressImage'
 
-
 function groupByProject(snags: ContractorSnag[]) {
   const map = new Map<string, ContractorSnag[]>()
   for (const s of snags) {
@@ -28,6 +27,182 @@ interface ContractorSnag {
   unit: { name: string } | null
   room: { name: string } | null
   project: { name: string; address: string | null; city: string | null } | null
+}
+
+interface SnagCardProps {
+  snag: ContractorSnag
+  isExpanded: boolean
+  isResolving: boolean
+  isUploading: boolean
+  resolveNote: string
+  resolvePhotoPreview: string | null
+  photoPickerRef: React.RefObject<HTMLInputElement | null>
+  onToggleExpand: () => void
+  onOpenResolvePanel: () => void
+  onCancelResolve: () => void
+  onSubmitResolve: () => void
+  onNoteChange: (v: string) => void
+  onRemovePhoto: () => void
+  onPickerClick: () => void
+}
+
+function SnagCard({
+  snag, isExpanded, isResolving, isUploading,
+  resolveNote, resolvePhotoPreview, photoPickerRef,
+  onToggleExpand, onOpenResolvePanel, onCancelResolve, onSubmitResolve,
+  onNoteChange, onRemovePhoto, onPickerClick,
+}: SnagCardProps) {
+  const isRejected = snag.status === 'rejected'
+  const isDone = snag.status === 'approved' || snag.status === 'closed'
+  const isFixed = snag.status === 'fixed'
+  const canResolve = snag.status === 'assigned' || snag.status === 'in_progress' || isRejected
+  const priority = PRIORITY_CONFIG[snag.priority as keyof typeof PRIORITY_CONFIG]
+  const problemPhoto = snag.attachments.find(a => !a.is_resolution)
+  const fixPhoto = snag.attachments.find(a => a.is_resolution)
+
+  return (
+    <div className="sf-card overflow-hidden">
+      <button
+        onClick={onToggleExpand}
+        className="flex w-full items-start gap-3 p-4 text-left"
+      >
+        <div className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${priority?.dot ?? 'bg-slate-400'}`} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-900">#{snag.snag_number} {snag.title}</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {snag.project?.name}
+            {snag.unit?.name ? ` · ${snag.unit.name}` : ''}
+            {snag.room?.name ? ` · ${snag.room.name}` : ''}
+          </p>
+          {snag.project?.address || snag.project?.city ? (
+            <p className="text-xs text-slate-400 mt-0.5">
+              {[snag.project.address, snag.project.city].filter(Boolean).join(', ')}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isDone ? <CheckCircle className="h-4 w-4 text-green-500" />
+            : isFixed ? <CheckCircle className="h-4 w-4 text-teal-500" />
+            : isRejected ? <AlertTriangle className="h-4 w-4 text-rose-500" />
+            : snag.priority === 'critical' ? <AlertTriangle className="h-4 w-4 text-red-500" />
+            : <Clock className="h-4 w-4 text-slate-300" />}
+          {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-slate-100 px-4 pb-4 space-y-3">
+
+          {problemPhoto && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-slate-400 uppercase tracking-wide">Problem</p>
+              <div className="h-48 overflow-hidden rounded-xl">
+                <img src={problemPhoto.public_url} alt="Problem" className="h-full w-full object-cover" />
+              </div>
+            </div>
+          )}
+
+          {fixPhoto && (isFixed || isDone) && (
+            <div>
+              <p className="mb-1 text-xs font-medium text-teal-600 uppercase tracking-wide">Fix photo</p>
+              <div className="h-48 overflow-hidden rounded-xl border-2 border-teal-200">
+                <img src={fixPhoto.public_url} alt="Fix" className="h-full w-full object-cover" />
+              </div>
+            </div>
+          )}
+
+          {snag.description && (
+            <p className="text-sm text-slate-600 leading-relaxed">{snag.description}</p>
+          )}
+
+          {snag.due_date && (
+            <p className="text-xs text-slate-400">Due: {new Date(snag.due_date).toLocaleDateString('en-ZA')}</p>
+          )}
+
+          {isRejected && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5">
+              <p className="text-sm font-semibold text-rose-700">Fix not accepted</p>
+              <p className="text-xs text-rose-600 mt-0.5">The manager has rejected your fix. Please redo the work and resubmit.</p>
+            </div>
+          )}
+
+          {isFixed && (
+            <div className="flex items-center gap-2 rounded-xl bg-teal-50 border border-teal-200 px-3 py-2.5">
+              <CheckCircle className="h-4 w-4 text-teal-600 flex-shrink-0" />
+              <p className="text-sm font-medium text-teal-700">Marked as completed — awaiting approval</p>
+            </div>
+          )}
+
+          {isDone && (
+            <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
+              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+              <p className="text-sm font-medium text-green-700">Approved — all done</p>
+            </div>
+          )}
+
+          {canResolve && !isResolving && (
+            <button
+              onClick={onOpenResolvePanel}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition-colors"
+            >
+              <CheckCircle className="h-4 w-4" />
+              {isRejected ? 'Resubmit as completed' : 'Mark as completed'}
+            </button>
+          )}
+
+          {canResolve && isResolving && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+              <div>
+                {resolvePhotoPreview ? (
+                  <div className="relative h-36 overflow-hidden rounded-xl">
+                    <img src={resolvePhotoPreview} alt="Fix" className="h-full w-full object-cover" />
+                    <button
+                      onClick={onRemovePhoto}
+                      className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={onPickerClick}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm text-slate-500 hover:border-slate-400"
+                  >
+                    <Camera className="h-4 w-4" /> Add photo (optional)
+                  </button>
+                )}
+              </div>
+
+              <textarea
+                value={resolveNote}
+                onChange={e => onNoteChange(e.target.value)}
+                placeholder="Add a note (optional)…"
+                rows={3}
+                className="sf-input resize-none text-sm"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={onSubmitResolve}
+                  disabled={isUploading}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                >
+                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  {isUploading ? 'Submitting…' : 'Submit'}
+                </button>
+                <button
+                  onClick={onCancelResolve}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface Props {
@@ -86,174 +261,6 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
     }
   }
 
-  function SnagCard({ snag }: { snag: ContractorSnag }) {
-    const isExpanded = expandedId === snag.id
-    const isRejected = snag.status === 'rejected'
-    const isDone = snag.status === 'approved' || snag.status === 'closed'
-    const isFixed = snag.status === 'fixed'
-    const isUploading = uploading === snag.id
-    const isResolving = resolvingId === snag.id
-    const priority = PRIORITY_CONFIG[snag.priority as keyof typeof PRIORITY_CONFIG]
-    const problemPhoto = snag.attachments.find(a => !a.is_resolution)
-    const fixPhoto = snag.attachments.find(a => a.is_resolution)
-    const canResolve = snag.status === 'assigned' || snag.status === 'in_progress' || isRejected
-
-    return (
-      <div className="sf-card overflow-hidden">
-        <button
-          onClick={() => setExpandedId(isExpanded ? null : snag.id)}
-          className="flex w-full items-start gap-3 p-4 text-left"
-        >
-          <div className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${priority?.dot ?? 'bg-slate-400'}`} />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900">#{snag.snag_number} {snag.title}</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {snag.project?.name}
-              {snag.unit?.name ? ` · ${snag.unit.name}` : ''}
-              {snag.room?.name ? ` · ${snag.room.name}` : ''}
-            </p>
-            {snag.project?.address || snag.project?.city ? (
-              <p className="text-xs text-slate-400 mt-0.5">
-                {[snag.project.address, snag.project.city].filter(Boolean).join(', ')}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {isDone ? <CheckCircle className="h-4 w-4 text-green-500" />
-              : isFixed ? <CheckCircle className="h-4 w-4 text-teal-500" />
-              : isRejected ? <AlertTriangle className="h-4 w-4 text-rose-500" />
-              : snag.priority === 'critical' ? <AlertTriangle className="h-4 w-4 text-red-500" />
-              : <Clock className="h-4 w-4 text-slate-300" />}
-            {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-          </div>
-        </button>
-
-        {isExpanded && (
-          <div className="border-t border-slate-100 px-4 pb-4 space-y-3">
-
-            {/* Problem photo */}
-            {problemPhoto && (
-              <div>
-                <p className="mb-1 text-xs font-medium text-slate-400 uppercase tracking-wide">Problem</p>
-                <div className="h-48 overflow-hidden rounded-xl">
-                  <img src={problemPhoto.public_url} alt="Problem" className="h-full w-full object-cover" />
-                </div>
-              </div>
-            )}
-
-            {/* Fix photo — only shown on completed snags */}
-            {fixPhoto && (isFixed || isDone) && (
-              <div>
-                <p className="mb-1 text-xs font-medium text-teal-600 uppercase tracking-wide">Fix photo</p>
-                <div className="h-48 overflow-hidden rounded-xl border-2 border-teal-200">
-                  <img src={fixPhoto.public_url} alt="Fix" className="h-full w-full object-cover" />
-                </div>
-              </div>
-            )}
-
-            {snag.description && (
-              <p className="text-sm text-slate-600 leading-relaxed">{snag.description}</p>
-            )}
-
-            {snag.due_date && (
-              <p className="text-xs text-slate-400">Due: {new Date(snag.due_date).toLocaleDateString('en-ZA')}</p>
-            )}
-
-            {isRejected && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5">
-                <p className="text-sm font-semibold text-rose-700">Fix not accepted</p>
-                <p className="text-xs text-rose-600 mt-0.5">The manager has rejected your fix. Please redo the work and resubmit.</p>
-              </div>
-            )}
-
-            {isFixed && (
-              <div className="flex items-center gap-2 rounded-xl bg-teal-50 border border-teal-200 px-3 py-2.5">
-                <CheckCircle className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                <p className="text-sm font-medium text-teal-700">Marked as completed — awaiting approval</p>
-              </div>
-            )}
-
-            {isDone && (
-              <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
-                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <p className="text-sm font-medium text-green-700">Approved — all done</p>
-              </div>
-            )}
-
-            {/* Mark as completed flow */}
-            {canResolve && !isResolving && (
-              <button
-                onClick={() => openResolvePanel(snag.id)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition-colors"
-              >
-                <CheckCircle className="h-4 w-4" />
-                {isRejected ? 'Resubmit as completed' : 'Mark as completed'}
-              </button>
-            )}
-
-            {canResolve && isResolving && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                {/* Optional photo */}
-                <div>
-                  {resolvePhotoPreview ? (
-                    <div className="relative h-36 overflow-hidden rounded-xl">
-                      <img src={resolvePhotoPreview} alt="Fix" className="h-full w-full object-cover" />
-                      <button
-                        onClick={() => { setResolvePhoto(null); setResolvePhotoPreview(null) }}
-                        className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => photoPickerRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm text-slate-500 hover:border-slate-400"
-                    >
-                      <Camera className="h-4 w-4" /> Add photo (optional)
-                    </button>
-                  )}
-                  <input
-                    ref={photoPickerRef}
-                    type="file" accept="image/*" capture="environment"
-                    className="hidden"
-                    onChange={handlePhotoSelect}
-                  />
-                </div>
-
-                {/* Optional note */}
-                <textarea
-                  value={resolveNote}
-                  onChange={e => setResolveNote(e.target.value)}
-                  placeholder="Add a note (optional)…"
-                  rows={2}
-                  className="sf-input resize-none text-sm"
-                />
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleSubmitResolve(snag.id)}
-                    disabled={isUploading}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
-                  >
-                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                    {isUploading ? 'Submitting…' : 'Submit'}
-                  </button>
-                  <button
-                    onClick={() => setResolvingId(null)}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   const allProjects = [...new Set(localSnags.map(s => s.project?.name ?? 'Project'))]
   const activeSnags = (activeTab === 'todo' ? todoSnags : completedSnags)
     .filter(s => projectFilter === 'all' || (s.project?.name ?? 'Project') === projectFilter)
@@ -261,7 +268,6 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
-      {/* Header */}
       <div className="bg-[#1A56DB] px-4 pt-safe pb-4">
         <div className="mx-auto max-w-lg pt-4">
           <div className="flex items-center justify-between">
@@ -282,14 +288,11 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
             </button>
           </div>
 
-          {/* Tabs */}
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => setActiveTab('todo')}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-                activeTab === 'todo'
-                  ? 'bg-white text-[#1A56DB]'
-                  : 'bg-white/15 text-white hover:bg-white/25'
+                activeTab === 'todo' ? 'bg-white text-[#1A56DB]' : 'bg-white/15 text-white hover:bg-white/25'
               }`}
             >
               To Do
@@ -304,9 +307,7 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
             <button
               onClick={() => setActiveTab('completed')}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-                activeTab === 'completed'
-                  ? 'bg-white text-[#1A56DB]'
-                  : 'bg-white/15 text-white hover:bg-white/25'
+                activeTab === 'completed' ? 'bg-white text-[#1A56DB]' : 'bg-white/15 text-white hover:bg-white/25'
               }`}
             >
               Completed
@@ -351,13 +352,39 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
             <div key={project}>
               <p className="mb-2 text-sm font-semibold text-slate-700">📋 {project}</p>
               <div className="space-y-2">
-                {items.map(snag => <SnagCard key={snag.id} snag={snag} />)}
+                {items.map(snag => (
+                  <SnagCard
+                    key={snag.id}
+                    snag={snag}
+                    isExpanded={expandedId === snag.id}
+                    isResolving={resolvingId === snag.id}
+                    isUploading={uploading === snag.id}
+                    resolveNote={resolveNote}
+                    resolvePhotoPreview={resolvePhotoPreview}
+                    photoPickerRef={photoPickerRef}
+                    onToggleExpand={() => setExpandedId(expandedId === snag.id ? null : snag.id)}
+                    onOpenResolvePanel={() => openResolvePanel(snag.id)}
+                    onCancelResolve={() => setResolvingId(null)}
+                    onSubmitResolve={() => handleSubmitResolve(snag.id)}
+                    onNoteChange={setResolveNote}
+                    onRemovePhoto={() => { setResolvePhoto(null); setResolvePhotoPreview(null) }}
+                    onPickerClick={() => photoPickerRef.current?.click()}
+                  />
+                ))}
               </div>
             </div>
           ))}
         </div>
-
       </div>
+
+      <input
+        ref={photoPickerRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
 
       <p className="mt-4 text-center text-xs text-slate-400 px-6">
         Powered by SnagandGo · kaplan.co.za/snagandgo
