@@ -68,28 +68,45 @@ interface Props {
 export default function ContractorPortal({ contractor, snags, token, managerWhatsapp }: Props) {
   const [localSnags, setLocalSnags] = useState(snags)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [resolveNote, setResolveNote] = useState('')
+  const [resolvePhoto, setResolvePhoto] = useState<File | null>(null)
+  const [resolvePhotoPreview, setResolvePhotoPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'todo' | 'completed'>('todo')
   const [projectFilter, setProjectFilter] = useState<string>('all')
-  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const photoPickerRef = useRef<HTMLInputElement | null>(null)
 
   const todoSnags = localSnags.filter(s => ['assigned', 'in_progress', 'rejected'].includes(s.status))
   const completedSnags = localSnags.filter(s => ['fixed', 'approved', 'closed'].includes(s.status))
   const waMessage = buildWhatsAppMessage(contractor.name, localSnags)
 
-  const handlePhotoAndFix = async (snagId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  function openResolvePanel(snagId: string) {
+    setResolvingId(snagId)
+    setResolveNote('')
+    setResolvePhoto(null)
+    setResolvePhotoPreview(null)
+  }
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setResolvePhoto(file)
+    setResolvePhotoPreview(URL.createObjectURL(file))
+  }
+
+  async function handleSubmitResolve(snagId: string) {
     setUploading(snagId)
     try {
       const formData = new FormData()
       formData.append('snagId', snagId)
       formData.append('contractorToken', token)
-      formData.append('resolutionPhoto', file)
+      if (resolvePhoto) formData.append('resolutionPhoto', resolvePhoto)
+      if (resolveNote.trim()) formData.append('resolutionNote', resolveNote.trim())
       const res = await fetch('/api/contractor/resolve', { method: 'POST', body: formData })
       if (!res.ok) throw new Error('Failed')
       setLocalSnags(prev => prev.map(s => s.id === snagId ? { ...s, status: 'fixed' } : s))
-      // switch to completed tab so they see the result
+      setResolvingId(null)
       setActiveTab('completed')
     } catch {
       alert('Failed to update. Please try again.')
@@ -104,9 +121,11 @@ export default function ContractorPortal({ contractor, snags, token, managerWhat
     const isDone = snag.status === 'approved' || snag.status === 'closed'
     const isFixed = snag.status === 'fixed'
     const isUploading = uploading === snag.id
+    const isResolving = resolvingId === snag.id
     const priority = PRIORITY_CONFIG[snag.priority as keyof typeof PRIORITY_CONFIG]
     const problemPhoto = snag.attachments.find(a => !a.is_resolution)
     const fixPhoto = snag.attachments.find(a => a.is_resolution)
+    const canResolve = snag.status === 'assigned' || snag.status === 'in_progress' || isRejected
 
     return (
       <div className="sf-card overflow-hidden">
@@ -172,14 +191,14 @@ export default function ContractorPortal({ contractor, snags, token, managerWhat
             {isRejected && (
               <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5">
                 <p className="text-sm font-semibold text-rose-700">Fix not accepted</p>
-                <p className="text-xs text-rose-600 mt-0.5">The manager has rejected your fix. Please redo the work and upload a new photo.</p>
+                <p className="text-xs text-rose-600 mt-0.5">The manager has rejected your fix. Please redo the work and resubmit.</p>
               </div>
             )}
 
             {isFixed && (
               <div className="flex items-center gap-2 rounded-xl bg-teal-50 border border-teal-200 px-3 py-2.5">
                 <CheckCircle className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                <p className="text-sm font-medium text-teal-700">Marked as fixed — awaiting manager approval</p>
+                <p className="text-sm font-medium text-teal-700">Marked as completed — awaiting approval</p>
               </div>
             )}
 
@@ -190,23 +209,72 @@ export default function ContractorPortal({ contractor, snags, token, managerWhat
               </div>
             )}
 
-            {(snag.status === 'assigned' || snag.status === 'in_progress' || isRejected) && (
-              <div className="pt-1">
-                <button
-                  onClick={() => fileRefs.current[snag.id]?.click()}
-                  disabled={isUploading}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition-colors disabled:opacity-50"
-                >
-                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                  {isUploading ? 'Uploading…' : isRejected ? 'Upload photo & resubmit fix' : 'Upload photo & mark fixed'}
-                </button>
-                <p className="mt-1.5 text-center text-xs text-slate-400">A photo of the completed work is required</p>
-                <input
-                  ref={el => { fileRefs.current[snag.id] = el }}
-                  type="file" accept="image/*" capture="environment"
-                  className="hidden"
-                  onChange={e => handlePhotoAndFix(snag.id, e)}
+            {/* Mark as completed flow */}
+            {canResolve && !isResolving && (
+              <button
+                onClick={() => openResolvePanel(snag.id)}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-green-700 active:bg-green-800 transition-colors"
+              >
+                <CheckCircle className="h-4 w-4" />
+                {isRejected ? 'Resubmit as completed' : 'Mark as completed'}
+              </button>
+            )}
+
+            {canResolve && isResolving && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                {/* Optional photo */}
+                <div>
+                  {resolvePhotoPreview ? (
+                    <div className="relative h-36 overflow-hidden rounded-xl">
+                      <img src={resolvePhotoPreview} alt="Fix" className="h-full w-full object-cover" />
+                      <button
+                        onClick={() => { setResolvePhoto(null); setResolvePhotoPreview(null) }}
+                        className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => photoPickerRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm text-slate-500 hover:border-slate-400"
+                    >
+                      <Camera className="h-4 w-4" /> Add photo (optional)
+                    </button>
+                  )}
+                  <input
+                    ref={photoPickerRef}
+                    type="file" accept="image/*" capture="environment"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                </div>
+
+                {/* Optional note */}
+                <textarea
+                  value={resolveNote}
+                  onChange={e => setResolveNote(e.target.value)}
+                  placeholder="Add a note (optional)…"
+                  rows={2}
+                  className="sf-input resize-none text-sm"
                 />
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSubmitResolve(snag.id)}
+                    disabled={isUploading}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                    {isUploading ? 'Submitting…' : 'Submit'}
+                  </button>
+                  <button
+                    onClick={() => setResolvingId(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

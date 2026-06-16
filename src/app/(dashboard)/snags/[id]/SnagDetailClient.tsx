@@ -29,6 +29,7 @@ interface SnagDetail {
   due_date: string | null
   assigned_to: string | null
   ai_suggested: boolean
+  resolution_note: string | null
   created_at: string
   attachments?: Attachment[]
   contractor: Contractor | null
@@ -146,6 +147,13 @@ export default function SnagDetailClient({ snag, contractors, terms }: { snag: S
         </>
       )}
 
+      {snag.resolution_note && (
+        <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-teal-600">Note from {terms.contractor.toLowerCase()}</p>
+          <p className="text-sm leading-relaxed text-slate-700">{snag.resolution_note}</p>
+        </div>
+      )}
+
       {/* Contractor */}
       <div className="sf-card mt-6 p-4">
         <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-slate-900">
@@ -217,13 +225,22 @@ export default function SnagDetailClient({ snag, contractors, terms }: { snag: S
         </div>
 
         {snag.status === 'fixed' && (
-          <button
-            onClick={() => { if (confirm(`Reject this fix? The ${terms.contractor.toLowerCase()} will see it as rejected and must redo it.`)) setStatus('rejected') }}
-            disabled={busy}
-            className="mt-3 w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
-          >
-            Reject fix
-          </button>
+          <>
+            <button
+              onClick={() => setStatus('approved')}
+              disabled={busy}
+              className="mt-3 w-full rounded-xl bg-green-600 px-4 py-4 text-base font-bold text-white shadow-lg shadow-green-600/25 hover:bg-green-700 active:scale-[0.98] transition-[transform,colors] disabled:opacity-50"
+            >
+              ✓ Approve — mark as done
+            </button>
+            <button
+              onClick={() => { if (confirm(`Reject this fix? The ${terms.contractor.toLowerCase()} will see it as rejected and must redo it.`)) setStatus('rejected') }}
+              disabled={busy}
+              className="mt-2 w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
+            >
+              Reject fix
+            </button>
+          </>
         )}
 
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
