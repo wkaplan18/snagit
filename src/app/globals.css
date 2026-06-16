@@ -138,6 +138,8 @@
 
   .text-balance { text-wrap: balance; }
 
+  .font-display { font-family: var(--font-display), system-ui, sans-serif; }
+
   /* Gradient text */
   .text-gradient {
     background: linear-gradient(135deg, #1A56DB, #6366F1);
@@ -145,4 +147,58 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  .text-gradient-vivid {
+    background: linear-gradient(135deg, #38BDF8, #818CF8, #F472B6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 }
+
+/* Landing page animations */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-28px) scale(1.04); }
+}
+@keyframes float-med {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-18px) rotate(6deg); }
+}
+@keyframes float-fast {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-float-slow  { animation: float-slow 7s ease-in-out infinite; }
+.animate-float-med   { animation: float-med 5s ease-in-out infinite; }
+.animate-float-fast  { animation: float-fast 3.5s ease-in-out infinite; }
+.animate-ticker      { animation: ticker 28s linear infinite; }
+.animate-gradient    {
+  background-size: 300% 300%;
+  animation: gradient-shift 8s ease infinite;
+}
+.animate-fade-up     { animation: fade-up 0.6s ease forwards; }
+.animate-pulse-ring  { animation: pulse-ring 1.8s ease-out infinite; }
+.animate-spin-slow   { animation: spin-slow 20s linear infinite; }

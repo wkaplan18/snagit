@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-display' })
 
 export const metadata: Metadata = {
-  title: 'SnagandGo — Construction Snagging Made Simple',
-  description: 'The fastest snagging platform for South African property developers, site managers, and contractors.',
+  title: 'snagnmaintain — Property Maintenance, Sorted',
+  description: 'Spot it. Assign it. Fixed. The maintenance platform for builders, hotels, homeowners and more.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'SnagandGo',
+    title: 'snagnmaintain',
   },
 }
 
@@ -24,7 +25,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="bg-sf-base text-sf-text antialiased">{children}</body>
     </html>
   )
