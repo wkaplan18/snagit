@@ -6,13 +6,12 @@ import { ArrowLeft, Camera, Loader2, X } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
-import type { Contractor, DashboardTerms, OrgType, Room } from '@/types'
+import type { Contractor, DashboardTerms, Room } from '@/types'
 
 interface Props {
   projectId: string
   unitId: string
   orgId: string
-  orgType: OrgType
   terms: DashboardTerms
   initialRooms: Room[]
   initialContractors: Contractor[]
@@ -27,7 +26,7 @@ function formatWhatsApp(raw: string): string {
   return num
 }
 
-export default function AddJobClient({ projectId, unitId, orgId, orgType, terms, initialRooms, initialContractors }: Props) {
+export default function AddJobClient({ projectId, unitId, orgId, terms, initialRooms, initialContractors }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -141,6 +140,7 @@ export default function AddJobClient({ projectId, unitId, orgId, orgType, terms,
         const digits = assigned.whatsapp.replace(/\D/g, '')
         const e164 = digits.startsWith('0') ? '27' + digits.slice(1) : digits
         const msg = `Hi ${assigned.name}, you've been assigned a new ${terms.issue.toLowerCase()}: "${title}". View and update it here:\n${window.location.origin}/c/${assigned.access_token}`
+        setSaving(false)
         setWaUrl(`https://wa.me/${e164}?text=${encodeURIComponent(msg)}`)
         setWaName(assigned.name)
         return
@@ -312,7 +312,7 @@ export default function AddJobClient({ projectId, unitId, orgId, orgType, terms,
             <select
               value={contractorId}
               onChange={e => {
-                if (e.target.value === '__add__') { setAddingContractor(true); e.target.value = '' }
+                if (e.target.value === '__add__') setAddingContractor(true)
                 else setContractorId(e.target.value)
               }}
               className="sf-input"

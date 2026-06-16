@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AddJobClient from './AddJobClient'
 import { DASHBOARD_TERMS } from '@/types'
-import type { OrgType } from '@/types'
+import type { OrgType } from '@/types' // still needed for cast below
 
 export default async function AddJobPage({
   searchParams,
@@ -73,7 +73,6 @@ export default async function AddJobPage({
       projectId={projectId}
       unitId={unitId}
       orgId={orgId}
-      orgType={orgType}
       terms={terms}
       initialRooms={rooms ?? []}
       initialContractors={contractors ?? []}

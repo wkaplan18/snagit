@@ -25,10 +25,8 @@ function SnagsInner({ terms }: { terms: DashboardTerms }) {
   const [status, setStatus] = useState(initialFilter)
   const [projectId, setProjectId] = useState('')
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
-  const { snags, loading, refetch } = useSnags({ ...(status ? { status } : {}), ...(projectId ? { projectId } : {}) })
+  const { snags, loading } = useSnags({ ...(status ? { status } : {}), ...(projectId ? { projectId } : {}) })
   const supabase = createClient()
-
-  void refetch // used implicitly via dependency
 
   const issue = terms.issue.toLowerCase()
   const issues = terms.issues.toLowerCase()
