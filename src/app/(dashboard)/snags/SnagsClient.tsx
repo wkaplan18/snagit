@@ -8,7 +8,7 @@ import type { Snag, DashboardTerms } from '@/types'
 
 const FILTERS = [
   { value: 'open,assigned,rejected', label: 'Open' },
-  { value: 'fixed', label: 'Fixed' },
+  { value: 'fixed', label: 'Review' },
   { value: 'approved', label: 'Approved' },
   { value: '', label: 'All' },
 ]
@@ -17,9 +17,10 @@ interface Props {
   initialSnags: Snag[]
   projects: { id: string; name: string }[]
   terms: DashboardTerms
+  fixedCount: number
 }
 
-export default function SnagsClient({ initialSnags, projects, terms }: Props) {
+export default function SnagsClient({ initialSnags, projects, terms, fixedCount }: Props) {
   const [status, setStatus] = useState('open,assigned,rejected')
   const [projectId, setProjectId] = useState('')
   const [snags, setSnags] = useState<Snag[]>(initialSnags)
@@ -68,19 +69,30 @@ export default function SnagsClient({ initialSnags, projects, terms }: Props) {
       )}
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {FILTERS.map(f => (
-          <button
-            key={f.value}
-            onClick={() => setStatus(f.value)}
-            className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
-              status === f.value
-                ? 'border-[#1A56DB] bg-[#1A56DB] text-white'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+        {FILTERS.map(f => {
+          const active = status === f.value
+          const showBadge = f.value === 'fixed' && fixedCount > 0
+          return (
+            <button
+              key={f.value}
+              onClick={() => setStatus(f.value)}
+              className={`relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                active
+                  ? 'border-[#1A56DB] bg-[#1A56DB] text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {f.label}
+              {showBadge && (
+                <span className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                  active ? 'bg-white text-[#1A56DB]' : 'bg-orange-500 text-white'
+                }`}>
+                  {fixedCount}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {loading ? (
