@@ -1,39 +1,10 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Camera, CheckCircle, Clock, AlertTriangle, Loader2, ChevronDown, ChevronUp, MessageCircle, RefreshCw } from 'lucide-react'
+import { Camera, CheckCircle, Clock, AlertTriangle, Loader2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { PRIORITY_CONFIG } from '@/types'
 import { compressImage } from '@/lib/compressImage'
 
-function buildWhatsAppUrl(managerWhatsapp: string | null, message: string) {
-  if (managerWhatsapp) {
-    const digits = managerWhatsapp.replace(/\D/g, '')
-    const e164 = digits.startsWith('0') ? '27' + digits.slice(1) : digits
-    return `https://wa.me/${e164}?text=${encodeURIComponent(message)}`
-  }
-  return `https://wa.me/?text=${encodeURIComponent(message)}`
-}
-
-function buildWhatsAppMessage(contractorName: string, snags: ContractorSnag[]) {
-  const fixed = snags.filter(s => s.status === 'fixed')
-  if (!fixed.length) return null
-  const byProject = new Map<string, typeof fixed>()
-  for (const s of fixed) {
-    const key = s.project?.name ?? 'Project'
-    byProject.set(key, [...(byProject.get(key) ?? []), s])
-  }
-  const lines = [`Hi, this is ${contractorName}. I've completed the following snag fixes and they're ready for your review:\n`]
-  for (const [project, items] of byProject) {
-    lines.push(`📋 ${project}`)
-    for (const s of items) {
-      const loc = [s.unit?.name, s.room?.name].filter(Boolean).join(' › ')
-      lines.push(`  ✅ #${s.snag_number} ${s.title}${loc ? ` (${loc})` : ''}`)
-    }
-    lines.push('')
-  }
-  lines.push('Please review and approve when you get a chance. Thanks.')
-  return lines.join('\n')
-}
 
 function groupByProject(snags: ContractorSnag[]) {
   const map = new Map<string, ContractorSnag[]>()
@@ -63,10 +34,9 @@ interface Props {
   contractor: { id: string; name: string; company: string | null; trade: string | null; org_id: string }
   snags: ContractorSnag[]
   token: string
-  managerWhatsapp: string | null
 }
 
-export default function ContractorPortal({ contractor, snags, token, managerWhatsapp }: Props) {
+export default function ContractorPortal({ contractor, snags, token }: Props) {
   const [localSnags, setLocalSnags] = useState(snags)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
@@ -80,7 +50,6 @@ export default function ContractorPortal({ contractor, snags, token, managerWhat
 
   const todoSnags = localSnags.filter(s => ['assigned', 'in_progress', 'rejected'].includes(s.status))
   const completedSnags = localSnags.filter(s => ['fixed', 'approved', 'closed'].includes(s.status))
-  const waMessage = buildWhatsAppMessage(contractor.name, localSnags)
 
   function openResolvePanel(snagId: string) {
     setResolvingId(snagId)
@@ -388,18 +357,6 @@ export default function ContractorPortal({ contractor, snags, token, managerWhat
           ))}
         </div>
 
-        {/* WhatsApp button — completed tab only, when fixes awaiting approval */}
-        {activeTab === 'completed' && waMessage && (
-          <a
-            href={buildWhatsAppUrl(managerWhatsapp, waMessage)}
-            target="_blank"
-            rel="noopener"
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1EBE5B] transition-colors active:scale-[0.98]"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Send fixes to manager via WhatsApp
-          </a>
-        )}
       </div>
 
       <p className="mt-4 text-center text-xs text-slate-400 px-6">

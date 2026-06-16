@@ -47,29 +47,11 @@ export default async function ContractorPage({ params }: { params: Promise<{ tok
     project: one(s.project),
   }))
 
-  // Get org owner's WhatsApp so the contractor can send updates directly
-  let managerWhatsapp: string | null = null
-  const { data: ownerMember } = await supabase
-    .from('org_members')
-    .select('user_id')
-    .eq('org_id', contractor.org_id)
-    .eq('role', 'owner')
-    .single()
-  if (ownerMember) {
-    const { data: ownerProfile } = await supabase
-      .from('profiles')
-      .select('whatsapp')
-      .eq('id', ownerMember.user_id)
-      .single()
-    managerWhatsapp = ownerProfile?.whatsapp ?? null
-  }
-
   return (
     <ContractorPortal
       contractor={contractor}
       snags={flatSnags}
       token={token}
-      managerWhatsapp={managerWhatsapp}
     />
   )
 }
