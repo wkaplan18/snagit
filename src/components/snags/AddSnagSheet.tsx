@@ -424,21 +424,19 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
                 </div>
                 {addingContractor && (
                   <div className="mt-2 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    {/* Internal / External toggle — hidden for homeowners */}
-                    {!simplified && (
-                      <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden text-sm font-medium">
-                        <button
-                          type="button"
-                          onClick={() => setNewContractorIsInternal(false)}
-                          className={`flex-1 py-2 transition-colors ${!newContractorIsInternal ? 'bg-[#1A56DB] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                        >{terms.externalLabel}</button>
-                        <button
-                          type="button"
-                          onClick={() => setNewContractorIsInternal(true)}
-                          className={`flex-1 py-2 transition-colors ${newContractorIsInternal ? 'bg-[#1A56DB] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                        >{terms.internalLabel}</button>
-                      </div>
-                    )}
+                    {/* Internal / External toggle */}
+                    <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden text-sm font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setNewContractorIsInternal(false)}
+                        className={`flex-1 py-2 transition-colors ${!newContractorIsInternal ? 'bg-[#1A56DB] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                      >{terms.externalLabel}</button>
+                      <button
+                        type="button"
+                        onClick={() => setNewContractorIsInternal(true)}
+                        className={`flex-1 py-2 transition-colors ${newContractorIsInternal ? 'bg-[#1A56DB] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                      >{terms.internalLabel}</button>
+                    </div>
                     <input type="text" autoFocus value={newContractorName} onChange={e => setNewContractorName(e.target.value)}
                       placeholder="Name *" className="sf-input" />
                     <div className="grid grid-cols-2 gap-2">
