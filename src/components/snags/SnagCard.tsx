@@ -52,6 +52,9 @@ export default function SnagCard({ snag }: { snag: Snag }) {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
+          {snag.project && (
+            <p className="text-[11px] font-medium text-[#1A56DB] truncate mb-0.5">{snag.project.name}</p>
+          )}
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-medium text-slate-900 leading-tight truncate">
               #{snag.snag_number} {snag.title}

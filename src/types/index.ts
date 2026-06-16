@@ -197,6 +197,7 @@ export interface Snag {
   comments?: Comment[]
   contractor?: Contractor | null
   room?: Room | null
+  project?: { id: string; name: string } | null
 }
 
 export interface Attachment {

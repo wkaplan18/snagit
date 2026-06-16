@@ -14,7 +14,8 @@ export default async function SnagsPage() {
     supabase.from('snags').select(`
       *, attachments(*),
       contractor:contractors(id, name, company, whatsapp, trade, access_token),
-      room:rooms(id, name)
+      room:rooms(id, name),
+      project:projects(id, name)
     `).in('status', ['open', 'assigned', 'rejected']).order('created_at', { ascending: false }),
     supabase.from('projects').select('id, name').order('name'),
     supabase.from('snags').select('id', { count: 'exact', head: true }).eq('status', 'fixed'),
