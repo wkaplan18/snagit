@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation'
 import { Plus, Users, Mail, MessageCircle, FileSpreadsheet, Download, Upload } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { waLink } from '@/lib/whatsappLink'
-import type { Contractor } from '@/types'
+import type { Contractor, DashboardTerms } from '@/types'
 
 // Exact template headers — the import matches these case-insensitively.
 const TEMPLATE_HEADERS = ['Name', 'Trade', 'Company', 'WhatsApp', 'Email', 'Phone'] as const
 
 const TRADES = ['Painter', 'Tiler', 'Plumber', 'Electrician', 'Carpenter', 'Builder', 'Glazier', 'HVAC', 'Waterproofing', 'General']
 
-export default function ContractorsClient({ orgId, contractors }: { orgId: string; contractors: Contractor[] }) {
+type Tab = 'all' | 'internal' | 'external'
+
+export default function ContractorsClient({ orgId, contractors, terms }: { orgId: string; contractors: Contractor[]; terms: DashboardTerms }) {
   const [showAdd, setShowAdd] = useState(contractors.length === 0)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -21,6 +23,8 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
   const [trade, setTrade] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [email, setEmail] = useState('')
+  const [isInternal, setIsInternal] = useState(false)
+  const [tab, setTab] = useState<Tab>('all')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [origin, setOrigin] = useState('')
@@ -36,6 +40,7 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
     setTrade(c.trade ?? '')
     setWhatsapp(c.whatsapp ?? '')
     setEmail(c.email ?? '')
+    setIsInternal(c.is_internal)
     setShowAdd(true)
     setError('')
   }
@@ -43,6 +48,7 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
   function resetForm() {
     setEditingId(null)
     setName(''); setCompany(''); setTrade(''); setWhatsapp(''); setEmail('')
+    setIsInternal(false)
     setShowAdd(false)
     setError('')
   }
@@ -57,6 +63,7 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
       trade: trade || null,
       whatsapp: whatsapp.trim() || null,
       email: email.trim() || null,
+      is_internal: isInternal,
     }
     const { error } = editingId
       ? await supabase.from('contractors').update(fields).eq('id', editingId)
@@ -149,18 +156,54 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
     return `mailto:${c.email ? encodeURIComponent(c.email) : ''}?subject=${subject}&body=${body}`
   }
 
+  const filtered = contractors.filter(c =>
+    tab === 'all' ? true : tab === 'internal' ? c.is_internal : !c.is_internal
+  )
+
   return (
     <div className="mx-auto max-w-lg px-4 pb-24 pt-6">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Team</h1>
         <button onClick={() => (showAdd ? resetForm() : setShowAdd(true))} className="sf-btn-primary px-4 py-2.5 text-sm">
-          <Plus className="h-4 w-4" /> Add contractor
+          <Plus className="h-4 w-4" /> Add person
         </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 rounded-xl bg-slate-100 p-1">
+        {(['all', 'internal', 'external'] as Tab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            {t === 'all' ? 'All' : t === 'internal' ? terms.internalLabel : terms.externalLabel}
+          </button>
+        ))}
       </div>
 
       {showAdd && (
         <form onSubmit={handleAdd} className="sf-card mb-4 space-y-3 p-4">
-          {editingId && <p className="text-sm font-semibold text-slate-900">Edit contractor</p>}
+          <p className="text-sm font-semibold text-slate-900">{editingId ? 'Edit person' : 'Add person'}</p>
+
+          {/* Internal / External toggle */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setIsInternal(false)}
+              className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${!isInternal ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+            >
+              {terms.externalLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsInternal(true)}
+              className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${isInternal ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+            >
+              {terms.internalLabel}
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">Name</label>
@@ -192,7 +235,7 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
           <div className="flex gap-2">
             <button type="button" onClick={resetForm} className="sf-btn-secondary flex-1 py-2.5 text-sm">Cancel</button>
             <button type="submit" disabled={saving || !name.trim()} className="sf-btn-primary flex-1 py-2.5 text-sm disabled:opacity-60">
-              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add contractor'}
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Add person'}
             </button>
           </div>
           {editingId && (
@@ -235,16 +278,21 @@ export default function ContractorsClient({ orgId, contractors }: { orgId: strin
       {contractors.length === 0 && !showAdd ? (
         <div className="sf-card flex flex-col items-center p-10 text-center">
           <Users className="mb-3 h-10 w-10 text-slate-300" />
-          <p className="text-sm font-medium text-slate-900">No contractors yet</p>
-          <p className="mt-1 text-sm text-slate-500">Add your painters, tilers and plumbers — they get a no-login portal link.</p>
+          <p className="text-sm font-medium text-slate-900">No one added yet</p>
+          <p className="mt-1 text-sm text-slate-500">Add your {terms.internalLabel.toLowerCase()} or {terms.externalLabel.toLowerCase()} — they get a no-login portal link.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {contractors.map(c => (
+          {filtered.map(c => (
             <div key={c.id} className="sf-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <button onClick={() => startEdit(c)} className="min-w-0 text-left">
-                  <p className="text-sm font-semibold text-slate-900 underline-offset-2 hover:underline">{c.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900 underline-offset-2 hover:underline">{c.name}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.is_internal ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
+                      {c.is_internal ? terms.internalLabel : terms.externalLabel}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-500">{[c.trade, c.company].filter(Boolean).join(' · ') || '—'} · <span className="text-[#1A56DB]">edit</span></p>
                   {c.whatsapp && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">

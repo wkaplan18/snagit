@@ -31,19 +31,21 @@ export interface DashboardTerms {
   issue: string
   issues: string
   contractor: string
+  internalLabel: string
+  externalLabel: string
 }
 
 export const DASHBOARD_TERMS: Record<OrgType, DashboardTerms> = {
-  builder:           { project: 'Project',  projects: 'Projects',   issue: 'Snag',  issues: 'Snags',  contractor: 'Contractor' },
-  hotel:             { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Staff member' },
-  homeowner:         { project: 'Home',     projects: 'Homes',      issue: 'Job',   issues: 'Jobs',   contractor: 'Service provider' },
-  property_manager:  { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Contractor' },
-  body_corporate:    { project: 'Complex',  projects: 'Complexes',  issue: 'Issue', issues: 'Issues', contractor: 'Contractor' },
-  facilities:        { project: 'Site',     projects: 'Sites',      issue: 'Job',   issues: 'Jobs',   contractor: 'Contractor' },
-  short_term_rental: { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Service provider' },
-  restaurant:        { project: 'Venue',    projects: 'Venues',     issue: 'Issue', issues: 'Issues', contractor: 'Contractor' },
-  school:            { project: 'Campus',   projects: 'Campuses',   issue: 'Job',   issues: 'Jobs',   contractor: 'Contractor' },
-  retail:            { project: 'Store',    projects: 'Stores',     issue: 'Issue', issues: 'Issues', contractor: 'Contractor' },
+  builder:           { project: 'Project',  projects: 'Projects',   issue: 'Snag',  issues: 'Snags',  contractor: 'Contractor',       internalLabel: 'Staff',            externalLabel: 'Subcontractor' },
+  hotel:             { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Staff member',     internalLabel: 'Maintenance Staff', externalLabel: 'Contractor' },
+  homeowner:         { project: 'Home',     projects: 'Homes',      issue: 'Job',   issues: 'Jobs',   contractor: 'Service provider', internalLabel: 'Household Staff',   externalLabel: 'Tradesperson' },
+  property_manager:  { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Contractor',       internalLabel: 'Staff',            externalLabel: 'Contractor' },
+  body_corporate:    { project: 'Complex',  projects: 'Complexes',  issue: 'Issue', issues: 'Issues', contractor: 'Contractor',       internalLabel: 'Building Staff',   externalLabel: 'Contractor' },
+  facilities:        { project: 'Site',     projects: 'Sites',      issue: 'Job',   issues: 'Jobs',   contractor: 'Contractor',       internalLabel: 'In-house Team',    externalLabel: 'Contractor' },
+  short_term_rental: { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Service provider', internalLabel: 'Housekeeper',      externalLabel: 'Tradesperson' },
+  restaurant:        { project: 'Venue',    projects: 'Venues',     issue: 'Issue', issues: 'Issues', contractor: 'Contractor',       internalLabel: 'Staff',            externalLabel: 'Contractor' },
+  school:            { project: 'Campus',   projects: 'Campuses',   issue: 'Job',   issues: 'Jobs',   contractor: 'Contractor',       internalLabel: 'Maintenance Staff', externalLabel: 'Contractor' },
+  retail:            { project: 'Store',    projects: 'Stores',     issue: 'Issue', issues: 'Issues', contractor: 'Contractor',       internalLabel: 'Staff',            externalLabel: 'Contractor' },
 }
 
 export type SnagStatus = 'open' | 'assigned' | 'in_progress' | 'fixed' | 'approved' | 'closed' | 'rejected'
@@ -156,6 +158,7 @@ export interface Contractor {
   phone: string | null
   whatsapp: string | null
   trade: string | null
+  is_internal: boolean
   access_token: string
   token_expires_at: string
   is_active: boolean
