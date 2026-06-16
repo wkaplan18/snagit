@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Check } from 'lucide-react'
+import { ArrowLeft, User, Check, LogOut } from 'lucide-react'
 import Link from 'next/link'
 
 interface Props {
@@ -121,6 +121,20 @@ export default function SettingsClient({ email, profile }: Props) {
           {saved ? <><Check className="h-4 w-4" /> Saved</> : saving ? 'Saving…' : 'Save profile'}
         </button>
       </form>
+
+      <button
+        type="button"
+        onClick={async () => {
+          await supabase.auth.signOut()
+          router.push('/')
+        }}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-100 active:scale-[0.97]"
+      >
+        <LogOut className="h-4 w-4" />
+        Sign out
+      </button>
+
+      <p className="mt-6 text-center text-xs text-slate-400">POPIA compliant · Data stored securely</p>
     </div>
   )
 }
