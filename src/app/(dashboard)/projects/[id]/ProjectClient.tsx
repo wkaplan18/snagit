@@ -55,6 +55,7 @@ function UnitSnags({ projectId, unitId, terms, bare = false }: { projectId: stri
 }
 
 export default function ProjectClient({ project, units, contractors, terms, orgType }: { project: ProjectInfo; units: UnitRow[]; contractors: Contractor[]; terms: DashboardTerms; orgType: OrgType }) {
+  const isSingleProperty = units.length === 1 && units[0].name === project.name
   const [openUnit, setOpenUnit] = useState<string | null>(units.length === 1 ? units[0].id : null)
   const [showAddUnit, setShowAddUnit] = useState(units.length === 0)
   const [unitName, setUnitName] = useState('')
@@ -128,67 +129,75 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
         </div>
       </div>
 
-      <div className="mb-3 mt-6 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-slate-900">Units</h2>
-        <button onClick={() => setShowAddUnit(v => !v)} className="inline-flex items-center gap-1 text-sm font-medium text-[#1A56DB]">
-          <Plus className="h-4 w-4" /> Add unit
-        </button>
-      </div>
-
-      {showAddUnit && (
-        <form onSubmit={handleAddUnit} className="sf-card mb-4 space-y-3 p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Unit name</label>
-              <input type="text" required minLength={1} value={unitName} onChange={e => setUnitName(e.target.value)}
-                placeholder="Unit 14" className="sf-input" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Type</label>
-              <select value={unitType} onChange={e => setUnitType(e.target.value as UnitType)} className="sf-input capitalize">
-                {UNIT_TYPES.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
-              </select>
-            </div>
-          </div>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={seedRooms} onChange={e => setSeedRooms(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
-            Add standard SA rooms (kitchen, bedrooms, bathrooms…)
-          </label>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <button type="submit" disabled={saving || !unitName.trim()} className="sf-btn-primary w-full py-2.5 text-sm disabled:opacity-60">
-            {saving ? 'Adding…' : 'Add unit'}
-          </button>
-        </form>
-      )}
-
-      {units.length === 0 && !showAddUnit ? (
-        <div className="sf-card flex flex-col items-center p-8 text-center">
-          <Home className="mb-3 h-8 w-8 text-slate-300" />
-          <p className="text-sm text-slate-500">No units yet — add the first unit to start logging {terms.issues.toLowerCase()}.</p>
+      {isSingleProperty ? (
+        <div className="mt-6">
+          <UnitSnags projectId={project.id} unitId={units[0].id} terms={terms} bare />
         </div>
       ) : (
-        <div className="space-y-3">
-          {units.map(u => {
-            const open = openUnit === u.id
-            return (
-              <div key={u.id} className="sf-card overflow-hidden">
-                <button onClick={() => setOpenUnit(open ? null : u.id)} className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEF4FF]">
-                      <Home className="h-5 w-5 text-[#1A56DB]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{u.name}</p>
-                      <p className="text-xs capitalize text-slate-400">{u.unit_type}</p>
-                    </div>
-                  </div>
-                  {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-                </button>
-                {open && <UnitSnags projectId={project.id} unitId={u.id} terms={terms} />}
+        <>
+          <div className="mb-3 mt-6 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-900">Units</h2>
+            <button onClick={() => setShowAddUnit(v => !v)} className="inline-flex items-center gap-1 text-sm font-medium text-[#1A56DB]">
+              <Plus className="h-4 w-4" /> Add unit
+            </button>
+          </div>
+
+          {showAddUnit && (
+            <form onSubmit={handleAddUnit} className="sf-card mb-4 space-y-3 p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Unit name</label>
+                  <input type="text" required minLength={1} value={unitName} onChange={e => setUnitName(e.target.value)}
+                    placeholder="Unit 14" className="sf-input" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Type</label>
+                  <select value={unitType} onChange={e => setUnitType(e.target.value as UnitType)} className="sf-input capitalize">
+                    {UNIT_TYPES.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
+                  </select>
+                </div>
               </div>
-            )
-          })}
-        </div>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={seedRooms} onChange={e => setSeedRooms(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+                Add standard SA rooms (kitchen, bedrooms, bathrooms…)
+              </label>
+              {error && <p className="text-xs text-red-600">{error}</p>}
+              <button type="submit" disabled={saving || !unitName.trim()} className="sf-btn-primary w-full py-2.5 text-sm disabled:opacity-60">
+                {saving ? 'Adding…' : 'Add unit'}
+              </button>
+            </form>
+          )}
+
+          {units.length === 0 && !showAddUnit ? (
+            <div className="sf-card flex flex-col items-center p-8 text-center">
+              <Home className="mb-3 h-8 w-8 text-slate-300" />
+              <p className="text-sm text-slate-500">No units yet — add the first unit to start logging {terms.issues.toLowerCase()}.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {units.map(u => {
+                const open = openUnit === u.id
+                return (
+                  <div key={u.id} className="sf-card overflow-hidden">
+                    <button onClick={() => setOpenUnit(open ? null : u.id)} className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEF4FF]">
+                          <Home className="h-5 w-5 text-[#1A56DB]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{u.name}</p>
+                          <p className="text-xs capitalize text-slate-400">{u.unit_type}</p>
+                        </div>
+                      </div>
+                      {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+                    </button>
+                    {open && <UnitSnags projectId={project.id} unitId={u.id} terms={terms} />}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
       )}
 
       <button onClick={handleDeleteProject} className="mt-10 w-full text-center text-xs font-medium text-red-400 hover:text-red-600">
