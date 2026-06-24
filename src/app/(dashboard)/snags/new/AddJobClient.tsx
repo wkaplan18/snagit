@@ -355,7 +355,7 @@ export default function AddJobClient() {
           title,
           description,
           category: 'other',
-          priority: 'medium',
+
           assigned_to: null,
           due_date: null,
           ai_suggested: false,

@@ -102,10 +102,10 @@ export default function FloorplanViewer({ floorplan, snags, onPinClick, onMapCli
       {/* Legend */}
       <div className="flex items-center gap-3 px-3 py-2 border-t border-slate-200 bg-white">
         {[
-          { color: '#DC2626', label: 'Critical' },
-          { color: '#EA580C', label: 'High' },
-          { color: '#D97706', label: 'Medium' },
-          { color: '#16A34A', label: 'Closed' },
+          { color: '#1A56DB', label: 'Open' },
+          { color: '#0D9488', label: 'Fixed' },
+          { color: '#16A34A', label: 'Approved' },
+          { color: '#E11D48', label: 'Rejected' },
         ].map(item => (
           <div key={item.label} className="flex items-center gap-1">
             <div className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
