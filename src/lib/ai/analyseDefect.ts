@@ -17,7 +17,6 @@ Return ONLY valid JSON — no markdown, no explanation — in this exact format:
   "title": "Short defect title, max 6 words",
   "category": "one of: paint|crack|tile|water|fitting|alignment|finishing|electrical|plumbing|structural|carpentry|glazing|hvac|other",
   "description": "Professional 1-2 sentence defect description for a snagging report",
-  "severity": "one of: low|medium|high|critical",
   "confidence": 0.0
 }
 
@@ -57,7 +56,6 @@ export async function analyseDefectImage(imageUrl: string): Promise<AISuggestion
       title: parsed.title ?? 'Construction defect',
       category: parsed.category ?? 'other',
       description: parsed.description ?? '',
-      severity: parsed.severity ?? 'medium',
       confidence: Math.min(1, Math.max(0, parsed.confidence ?? 0.5)),
     }
   } catch {
@@ -65,7 +63,6 @@ export async function analyseDefectImage(imageUrl: string): Promise<AISuggestion
       title: 'Construction defect',
       category: 'other',
       description: 'Defect identified. Please add a manual description.',
-      severity: 'medium',
       confidence: 0.3,
     }
   }
