@@ -33,7 +33,7 @@ export default async function SnagReportPage({
       : snagsQuery.eq('status', statuses[0])
   }
 
-  const [{ data: orgMember }, { data: snags }] = await Promise.all([
+  const [{ data: orgMember }, { data: snags }, { data: project }] = await Promise.all([
     supabase
       .from('org_members')
       .select('organizations(org_type, name)')
@@ -41,6 +41,9 @@ export default async function SnagReportPage({
       .limit(1)
       .maybeSingle(),
     snagsQuery,
+    projectId
+      ? supabase.from('projects').select('name').eq('id', projectId).single()
+      : Promise.resolve({ data: null }),
   ])
 
   const raw = orgMember?.organizations
@@ -84,7 +87,12 @@ export default async function SnagReportPage({
               <span className="text-lg font-bold text-slate-900">SnagIT</span>
             </div>
             <h1 className="text-2xl font-bold text-slate-900">{terms.issues} Report</h1>
-            <p className="mt-1 text-sm text-slate-500">{orgName}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {orgName}
+              {project?.name && (
+                <> · <span className="font-medium text-slate-700">{project.name}</span></>
+              )}
+            </p>
           </div>
           <div className="text-right text-sm text-slate-500">
             <p className="font-medium text-slate-700">Generated {now}</p>
