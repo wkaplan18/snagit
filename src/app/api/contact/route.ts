@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error: dbError } = await supabase
     .from('enterprise_enquiries')
