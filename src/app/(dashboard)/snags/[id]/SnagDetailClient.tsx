@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, BookUser, Camera, ChevronRight, Loader2, MapPin, Pencil, Plus, User, CalendarClock, Sparkles } from 'lucide-react'
+import { ArrowLeft, BookUser, Camera, ChevronRight, Loader2, MapPin, Pencil, Plus, User, CalendarClock } from 'lucide-react'
 import { waLink } from '@/lib/whatsappLink'
 import { compressImage } from '@/lib/compressImage'
 import { STATUS_CONFIG, type Attachment, type Contractor, type DashboardTerms, type SnagStatus } from '@/types'
@@ -28,7 +28,6 @@ interface SnagDetail {
   status: SnagStatus
   due_date: string | null
   assigned_to: string | null
-  ai_suggested: boolean
   resolution_note: string | null
   created_at: string
   attachments?: Attachment[]
@@ -255,7 +254,6 @@ export default function SnagDetailClient({ snag, contractors, terms, orgId, room
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
             {snag.unit && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {snag.unit.name}{snag.room ? ` · ${snag.room.name}` : ''}</span>}
             {snag.due_date && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" /> due {new Date(snag.due_date).toLocaleDateString('en-ZA')}</span>}
-            {snag.ai_suggested && <span className="flex items-center gap-1 text-violet-600"><Sparkles className="h-3 w-3" /> AI suggested</span>}
             <span className="capitalize">{snag.category}</span>
           </div>
 

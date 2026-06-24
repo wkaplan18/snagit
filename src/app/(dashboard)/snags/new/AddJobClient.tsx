@@ -358,8 +358,6 @@ export default function AddJobClient() {
 
           assigned_to: null,
           due_date: null,
-          ai_suggested: false,
-          ai_confidence: null,
         }),
       })
       if (!res.ok) throw new Error('Save failed')

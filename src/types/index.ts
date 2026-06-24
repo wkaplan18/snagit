@@ -166,8 +166,6 @@ export interface Snag {
   floor_plan_id: string | null
   pin_x: number | null
   pin_y: number | null
-  ai_suggested: boolean
-  ai_confidence: number | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -226,14 +224,6 @@ export interface SnagHistory {
   changed_by_contractor: string | null
   note: string | null
   created_at: string
-}
-
-// AI Analysis Response
-export interface AISuggestion {
-  title: string
-  category: DefectCategory
-  description: string
-  confidence: number
 }
 
 // Status display config
