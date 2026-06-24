@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { DEFAULT_ROOMS, SA_PROVINCES } from '@/types'
+import { SA_PROVINCES } from '@/types'
 import type { DashboardTerms, OrgType } from '@/types'
 
 export default function NewProjectClient({ orgId, terms, orgType }: { orgId: string; terms: DashboardTerms; orgType: OrgType }) {

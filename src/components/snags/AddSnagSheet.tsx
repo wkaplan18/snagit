@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, Camera, Sparkles, Loader2, ChevronDown, BookUser } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { X, Camera, Loader2, ChevronDown, BookUser } from 'lucide-react'
 import PhotoAnnotator from '@/components/snags/PhotoAnnotator'
 import { createClient } from '@/lib/supabase/client'
-import type { AISuggestion, Contractor, DashboardTerms, OrgType, Room } from '@/types'
-import { DEFAULT_ROOMS } from '@/types'
+import type { Contractor, DashboardTerms, OrgType, Room } from '@/types'
 import { compressImage } from '@/lib/compressImage'
 
 interface Props {
@@ -32,7 +31,7 @@ function formatWhatsApp(raw: string): string {
 }
 const BASE_CATEGORIES = ['paint', 'crack', 'tile', 'water', 'fitting', 'alignment', 'finishing', 'electrical', 'plumbing', 'structural', 'carpentry', 'glazing', 'hvac', 'other']
 
-type Step = 'camera' | 'annotate' | 'ai_loading' | 'form' | 'success'
+type Step = 'camera' | 'annotate' | 'form' | 'success'
 
 export default function AddSnagSheet({ projectId, unitId, rooms, contractors, terms, orgType, orgId, onClose, onSaved }: Props) {
   // Lock body scroll while sheet is open — prevents iOS touch-coordinate offset bug
@@ -42,16 +41,13 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  const simplified = false
   const [step, setStep] = useState<Step>('camera')
   const [savedWaUrl, setSavedWaUrl] = useState<string | null>(null)
   const [savedContractorName, setSavedContractorName] = useState<string | null>(null)
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Form fields (pre-filled by AI)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<string>('other')
@@ -142,47 +138,11 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Flip to true to re-enable AI defect analysis on photos (needs OPENAI_API_KEY).
-  const AI_ANALYSIS_ENABLED = false
-
-  const handlePhotoTaken = useCallback((file: File) => {
+  const handlePhotoTaken = (file: File) => {
     setPhoto(file)
     setPhotoUrl(URL.createObjectURL(file))
     setStep('annotate')
-  }, [])
-
-  // Runs after the markup step (with the annotated file, or the original if skipped)
-  const proceedAfterPhoto = useCallback(async (file: File) => {
-    if (!AI_ANALYSIS_ENABLED) {
-      setStep('form')
-      return
-    }
-
-    setStep('ai_loading')
-
-    // Upload to Supabase storage then call AI
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const uploadRes = await fetch('/api/uploads/snag-photo', { method: 'POST', body: formData })
-      const { url: uploadedUrl } = await uploadRes.json()
-
-      const aiRes = await fetch('/api/ai/analyse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: uploadedUrl }),
-      })
-      const suggestion: AISuggestion = await aiRes.json()
-
-      setAiSuggestion(suggestion)
-      setTitle(suggestion.title)
-      setDescription(suggestion.description)
-      setCategory(suggestion.category)
-    } catch {
-      // AI failed — go to form with empty fields
-    }
-    setStep('form')
-  }, [AI_ANALYSIS_ENABLED])
+  }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -207,8 +167,6 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
 
           assigned_to: contractorId || null,
           due_date: dueDate || null,
-          ai_suggested: !!aiSuggestion,
-          ai_confidence: aiSuggestion?.confidence ?? null,
         }),
       })
 
@@ -297,9 +255,9 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
           onDone={(file) => {
             setPhoto(file)
             setPhotoUrl(URL.createObjectURL(file))
-            proceedAfterPhoto(file)
+            setStep('form')
           }}
-          onSkip={() => photo && proceedAfterPhoto(photo)}
+          onSkip={() => setStep('form')}
         />
       )}
 
@@ -337,24 +295,6 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
         </div>
       )}
 
-      {/* AI loading step */}
-      {step === 'ai_loading' && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
-          {photoUrl && (
-            <div className="h-48 w-full max-w-xs overflow-hidden rounded-2xl">
-              <img src={photoUrl} alt="Snag" className="h-full w-full object-cover" />
-            </div>
-          )}
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-[#1A56DB]" />
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Analysing defect…</p>
-              <p className="text-xs text-slate-400">AI is identifying the issue</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Form step */}
       {step === 'form' && (
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -364,14 +304,6 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
               {photoUrl && (
                 <div className="relative h-40 w-full overflow-hidden rounded-2xl bg-slate-100">
                   <img src={photoUrl} alt="Snag" className="h-full w-full object-cover" />
-                  {aiSuggestion && (
-                    <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6">
-                      <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
-                      <span className="text-xs font-medium text-white">
-                        AI detected · {Math.round((aiSuggestion.confidence ?? 0) * 100)}% confidence
-                      </span>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -384,7 +316,7 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Title"
                   className="sf-input"
-                  autoFocus={!aiSuggestion}
+                  autoFocus
                 />
               </div>
 
@@ -400,37 +332,33 @@ export default function AddSnagSheet({ projectId, unitId, rooms, contractors, te
                 />
               </div>
 
-              {/* Category — hidden for simplified org types */}
-              {!simplified && (
-                <>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
-                      <div className="relative">
-                        <select
-                          value={category}
-                          onChange={e => e.target.value === ADD_NEW ? setAddingCategory(true) : setCategory(e.target.value)}
-                          className="sf-input appearance-none pr-8 capitalize"
-                        >
-                          {[...BASE_CATEGORIES, ...customCategories].map(c => (
-                            <option key={c} value={c} className="capitalize">{c === 'hvac' ? 'HVAC' : c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                          ))}
-                          <option value={ADD_NEW}>+ Add new category…</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
-                      </div>
-                    </div>
+              {/* Category */}
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
+                  <div className="relative">
+                    <select
+                      value={category}
+                      onChange={e => e.target.value === ADD_NEW ? setAddingCategory(true) : setCategory(e.target.value)}
+                      className="sf-input appearance-none pr-8 capitalize"
+                    >
+                      {[...BASE_CATEGORIES, ...customCategories].map(c => (
+                        <option key={c} value={c} className="capitalize">{c === 'hvac' ? 'HVAC' : c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                      ))}
+                      <option value={ADD_NEW}>+ Add new category…</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
                   </div>
+                </div>
+              </div>
 
-                  {addingCategory && (
-                    <div className="flex gap-2">
-                      <input type="text" autoFocus value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
-                        placeholder="e.g. Roofing" className="sf-input flex-1" />
-                      <button type="button" onClick={addCategory} className="sf-btn-primary px-4 py-2 text-sm">Add</button>
-                      <button type="button" onClick={() => setAddingCategory(false)} className="sf-btn-secondary px-3 py-2 text-sm">✕</button>
-                    </div>
-                  )}
-                </>
+              {addingCategory && (
+                <div className="flex gap-2">
+                  <input type="text" autoFocus value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+                    placeholder="e.g. Roofing" className="sf-input flex-1" />
+                  <button type="button" onClick={addCategory} className="sf-btn-primary px-4 py-2 text-sm">Add</button>
+                  <button type="button" onClick={() => setAddingCategory(false)} className="sf-btn-secondary px-3 py-2 text-sm">✕</button>
+                </div>
               )}
 
               {/* Room — pill picker (avoids iOS native select issues in fixed overlays) */}

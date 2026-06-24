@@ -228,14 +228,6 @@ export interface SnagHistory {
   created_at: string
 }
 
-// AI Analysis Response
-export interface AISuggestion {
-  title: string
-  category: DefectCategory
-  description: string
-  confidence: number
-}
-
 // Status display config
 export const STATUS_CONFIG: Record<SnagStatus, { label: string; color: string; bg: string }> = {
   open:        { label: 'Open',        color: 'text-red-700',    bg: 'bg-red-50 border-red-200' },

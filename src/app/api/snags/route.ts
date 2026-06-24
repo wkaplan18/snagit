@@ -16,8 +16,6 @@ const CreateSnagSchema = z.object({
   pin_x: z.number().nullable().optional(),
   pin_y: z.number().nullable().optional(),
   floor_plan_id: z.string().uuid().nullable().optional(),
-  ai_suggested: z.boolean().optional().default(false),
-  ai_confidence: z.number().nullable().optional(),
 })
 
 export async function GET(req: NextRequest) {
