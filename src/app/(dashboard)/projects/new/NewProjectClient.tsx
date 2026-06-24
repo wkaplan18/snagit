@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { SA_PROVINCES } from '@/types'
+import { SA_PROVINCES, DEFAULT_ROOMS } from '@/types'
 import type { DashboardTerms, OrgType } from '@/types'
 
 export default function NewProjectClient({ orgId, terms, orgType }: { orgId: string; terms: DashboardTerms; orgType: OrgType }) {
@@ -14,6 +14,7 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
   const [city, setCity] = useState('')
   const [province, setProvince] = useState('')
   const [description, setDescription] = useState('')
+  const [mode, setMode] = useState<'single' | 'multiple'>('single')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -23,7 +24,8 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { data, error } = await supabase
+
+    const { data, error: projectError } = await supabase
       .from('projects')
       .insert({
         org_id: orgId,
@@ -36,13 +38,32 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
       .select('id')
       .single()
 
-    if (error || !data) {
-      setError(error?.message ?? 'Could not create the project')
+    if (projectError || !data) {
+      setError(projectError?.message ?? 'Could not create the project')
       setLoading(false)
-    } else {
-      router.push(`/projects/${data.id}`)
-      router.refresh()
+      return
     }
+
+    if (mode === 'single') {
+      const { data: unit, error: unitError } = await supabase
+        .from('units')
+        .insert({ project_id: data.id, name: name.trim(), unit_type: 'house' })
+        .select('id')
+        .single()
+
+      if (unitError || !unit) {
+        setError(unitError?.message ?? 'Could not create the unit')
+        setLoading(false)
+        return
+      }
+
+      await supabase.from('rooms').insert(
+        DEFAULT_ROOMS.map((roomName, i) => ({ unit_id: unit.id, name: roomName, room_order: i }))
+      )
+    }
+
+    router.push(`/projects/${data.id}`)
+    router.refresh()
   }
 
   return (
@@ -84,10 +105,36 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
             placeholder={`Notes about this ${terms.project.toLowerCase()}`} className="sf-input resize-none" />
         </div>
 
+        {/* Property structure toggle */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">Property structure</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMode('single')}
+              className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${mode === 'single' ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+            >
+              Single property
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('multiple')}
+              className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${mode === 'multiple' ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+            >
+              Multiple units
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-slate-400">
+            {mode === 'single'
+              ? 'One standalone property — rooms are created automatically.'
+              : 'An apartment block, complex or development with separate units.'}
+          </p>
+        </div>
+
         {error && <p className="text-xs text-red-600">{error}</p>}
 
         <button type="submit" disabled={loading || name.trim().length < 2} className="sf-btn-primary w-full disabled:opacity-60">
-          {loading ? 'Creating…' : `Create ${terms.project.toLowerCase()}`}
+          {loading ? 'Creating…' : mode === 'single' ? `Create ${terms.project.toLowerCase()}` : `Create ${terms.project.toLowerCase()} & add units`}
         </button>
       </form>
     </div>
