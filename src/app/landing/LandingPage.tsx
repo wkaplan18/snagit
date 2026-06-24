@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   HardHat, BedDouble, Building, Users,
   Camera, Zap, CheckCircle, Bell, BarChart3, Smartphone,
-  ArrowRight, ChevronRight,
+  ArrowRight, ChevronRight, X,
 } from 'lucide-react'
 
 const USER_TYPES = [
@@ -79,8 +79,110 @@ function FadeUp({ children, delay = 0, className = '', style }: { children: Reac
   )
 }
 
+function EnterpriseModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({ name: '', company: '', email: '', phone: '', properties: '', message: '' })
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setStatus('loading')
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    setStatus(res.ok ? 'success' : 'error')
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl" style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+        <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #6366F1, #8B5CF6)' }} />
+        <div className="p-8">
+          <div className="mb-6 flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>Enterprise</p>
+              <h3 className="mt-1 text-2xl font-black text-white">Let's talk</h3>
+            </div>
+            <button onClick={onClose} className="rounded-xl p-2 transition-colors hover:bg-white/10 active:scale-95" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {status === 'success' ? (
+            <div className="py-8 text-center">
+              <CheckCircle className="mx-auto mb-4 h-12 w-12" style={{ color: '#22C55E' }} />
+              <p className="text-lg font-bold text-white">We'll be in touch soon.</p>
+              <p className="mt-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Thanks for reaching out — expect a reply within 24 hours.</p>
+              <button onClick={onClose} className="mt-6 rounded-xl px-6 py-3 text-sm font-bold text-white transition-opacity hover:opacity-80" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>Close</button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  { label: 'Name', key: 'name', required: true, placeholder: 'Your name' },
+                  { label: 'Company', key: 'company', required: false, placeholder: 'Company name' },
+                  { label: 'Email', key: 'email', required: true, placeholder: 'you@company.com' },
+                  { label: 'Phone', key: 'phone', required: false, placeholder: '+27 ...' },
+                ].map(({ label, key, required, placeholder }) => (
+                  <div key={key}>
+                    <label className="mb-1.5 block text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>{label}{required && ' *'}</label>
+                    <input
+                      type={key === 'email' ? 'email' : 'text'}
+                      required={required}
+                      placeholder={placeholder}
+                      value={form[key as keyof typeof form]}
+                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>Number of properties</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 25"
+                  value={form.properties}
+                  onChange={e => setForm(f => ({ ...f, properties: e.target.value }))}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>Message</label>
+                <textarea
+                  rows={3}
+                  placeholder="Tell us about your needs..."
+                  value={form.message}
+                  onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                  className="w-full resize-none rounded-xl px-4 py-3 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                />
+              </div>
+              {status === 'error' && <p className="text-sm" style={{ color: '#F87171' }}>Something went wrong — please try again.</p>}
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                className="w-full rounded-xl py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', boxShadow: '0 4px 24px rgba(99,102,241,0.4)' }}
+              >
+                {status === 'loading' ? 'Sending…' : 'Send enquiry'}
+              </button>
+              <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>We'll reply within 24 hours</p>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LandingPage() {
   const doubled = [...USER_TYPES, ...USER_TYPES]
+  const [showEnterpriseModal, setShowEnterpriseModal] = useState(false)
 
   return (
     <div className="font-display overflow-x-hidden bg-white" style={{ fontFamily: 'var(--font-display), system-ui, sans-serif' }}>
@@ -391,9 +493,9 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <a href="mailto:warren@kaplan.co.za" className="block w-full rounded-xl py-3.5 text-center text-sm font-bold text-white transition-opacity hover:opacity-80 active:scale-[0.98]" style={{ background: 'rgba(139,92,246,0.25)', border: '1px solid rgba(139,92,246,0.4)' }}>
+                <button onClick={() => setShowEnterpriseModal(true)} className="block w-full rounded-xl py-3.5 text-center text-sm font-bold text-white transition-opacity hover:opacity-80 active:scale-[0.98]" style={{ background: 'rgba(139,92,246,0.25)', border: '1px solid rgba(139,92,246,0.4)' }}>
                   Contact us
-                </a>
+                </button>
                 <p className="mt-3 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>Custom pricing · Volume discounts</p>
               </div>
             </div>
@@ -441,6 +543,8 @@ export default function LandingPage() {
         <p className="text-xs text-white/30">POPIA compliant · Data stored securely · Built in South Africa</p>
         <Link href="/login" className="text-sm font-medium text-white/50 hover:text-white transition-colors">Sign in →</Link>
       </footer>
+
+      {showEnterpriseModal && <EnterpriseModal onClose={() => setShowEnterpriseModal(false)} />}
     </div>
   )
 }
