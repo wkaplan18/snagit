@@ -246,69 +246,95 @@ export default function LandingPage() {
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-500">You manage everything. Your contractors just fix things — no logins, no app installs, no per-user fees. Ever.</p>
         </FadeUp>
 
-        <div className="mx-auto grid max-w-3xl gap-6 sm:grid-cols-2">
+        <div className="mx-auto grid max-w-3xl items-stretch gap-5 sm:grid-cols-2">
 
           {/* Property plan */}
-          <FadeUp>
-            <div className="flex h-full flex-col rounded-3xl p-8" style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Property</p>
-              <p className="mb-5 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>Hotels, homeowners & property managers — one site, fully managed.</p>
-              <div className="mb-6 flex items-baseline gap-1">
-                <span className="text-xl font-bold text-white">R</span>
-                <span className="text-5xl font-black text-white">1,499</span>
-                <span className="text-lg" style={{ color: 'rgba(255,255,255,0.3)' }}>/mo</span>
+          <FadeUp className="flex">
+            <div className="flex w-full flex-col overflow-hidden rounded-3xl" style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {/* Top accent */}
+              <div className="h-1 w-full" style={{ background: 'rgba(255,255,255,0.12)' }} />
+              <div className="flex flex-1 flex-col p-8">
+                {/* Plan label */}
+                <div className="mb-6 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>Property</span>
+                  <span className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>1 site</span>
+                </div>
+                {/* Price */}
+                <div className="mb-2 flex items-end gap-1.5">
+                  <span className="mb-1 text-lg font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>R</span>
+                  <span className="text-6xl font-black leading-none text-white">1,499</span>
+                  <span className="mb-1 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>/mo</span>
+                </div>
+                <p className="mb-6 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>Hotels, homeowners & property managers.</p>
+                {/* Divider */}
+                <div className="mb-6 h-px w-full" style={{ background: 'rgba(255,255,255,0.07)' }} />
+                {/* Features */}
+                <ul className="mb-8 flex-1 space-y-3.5">
+                  {[
+                    '1 property',
+                    'You manage — contractors just fix',
+                    'Unlimited contractors — no app needed',
+                    'Photo before & after logging',
+                    'Live dashboard & reports',
+                    'Full audit trail for every job',
+                  ].map(f => (
+                    <li key={f} className="flex items-center gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                      <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22C55E' }} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                {/* CTA */}
+                <Link href="/register" className="block w-full rounded-xl py-3.5 text-center text-sm font-bold text-white transition-all hover:opacity-80 active:scale-[0.98]" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  Start free trial
+                </Link>
+                <p className="mt-3 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>14 days free · No credit card</p>
               </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {[
-                  '1 property',
-                  'You manage — contractors just fix',
-                  'Unlimited contractors — no app needed',
-                  'Photo before & after logging',
-                  'Live dashboard & reports',
-                  'Full audit trail for every job',
-                ].map(f => (
-                  <li key={f} className="flex items-center gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22C55E' }} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="block w-full rounded-xl py-3.5 text-center text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                Start 14-day free trial
-              </Link>
             </div>
           </FadeUp>
 
           {/* Contractor plan */}
-          <FadeUp delay={100}>
-            <div className="relative flex h-full flex-col rounded-3xl p-8" style={{ background: '#0F172A', border: '1px solid rgba(26,86,219,0.5)', boxShadow: '0 0 60px rgba(26,86,219,0.15)' }}>
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-xs font-bold text-white" style={{ background: '#1A56DB' }}>Best for contractors</div>
-              <p className="mb-1 mt-2 text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Contractor</p>
-              <p className="mb-5 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>Builders & contractors running multiple sites — one account, every project.</p>
-              <div className="mb-6 flex items-baseline gap-1">
-                <span className="text-xl font-bold text-white">R</span>
-                <span className="text-5xl font-black text-white">2,699</span>
-                <span className="text-lg" style={{ color: 'rgba(255,255,255,0.3)' }}>/mo</span>
+          <FadeUp delay={100} className="flex">
+            <div className="flex w-full flex-col overflow-hidden rounded-3xl" style={{ background: '#0A1628', border: '1px solid rgba(26,86,219,0.45)', boxShadow: '0 0 0 1px rgba(26,86,219,0.15), 0 8px 64px rgba(26,86,219,0.2)' }}>
+              {/* Top accent — blue gradient */}
+              <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #1A56DB, #6366F1)' }} />
+              <div className="flex flex-1 flex-col p-8">
+                {/* Plan label + badge */}
+                <div className="mb-6 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>Contractor</span>
+                  <span className="rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: 'rgba(26,86,219,0.3)', color: '#93B4FF', border: '1px solid rgba(26,86,219,0.4)' }}>Unlimited sites</span>
+                </div>
+                {/* Price */}
+                <div className="mb-2 flex items-end gap-1.5">
+                  <span className="mb-1 text-lg font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>R</span>
+                  <span className="text-6xl font-black leading-none text-white">2,699</span>
+                  <span className="mb-1 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>/mo</span>
+                </div>
+                <p className="mb-6 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>Builders & contractors running multiple sites.</p>
+                {/* Divider */}
+                <div className="mb-6 h-px w-full" style={{ background: 'rgba(26,86,219,0.3)' }} />
+                {/* Features */}
+                <ul className="mb-8 flex-1 space-y-3.5">
+                  {[
+                    'Unlimited properties & sites',
+                    'You manage — contractors just fix',
+                    'Unlimited contractors — no app needed',
+                    'Photo before & after logging',
+                    'Live dashboard & reports',
+                    'Full audit trail for every job',
+                  ].map(f => (
+                    <li key={f} className="flex items-center gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                      <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22C55E' }} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                {/* CTA */}
+                <Link href="/register" className="block w-full rounded-xl py-3.5 text-center text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]" style={{ background: 'linear-gradient(135deg, #1A56DB, #6366F1)', boxShadow: '0 4px 24px rgba(26,86,219,0.45)' }}>
+                  Start free trial
+                </Link>
+                <p className="mt-3 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>14 days free · No credit card</p>
               </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {[
-                  'Unlimited properties & sites',
-                  'You manage — contractors just fix',
-                  'Unlimited contractors — no app needed',
-                  'Photo before & after logging',
-                  'Live dashboard & reports',
-                  'Full audit trail for every job',
-                ].map(f => (
-                  <li key={f} className="flex items-center gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22C55E' }} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="block w-full rounded-xl py-3.5 text-center text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95" style={{ background: 'linear-gradient(135deg, #1A56DB, #6366F1)', boxShadow: '0 4px 20px rgba(26,86,219,0.4)' }}>
-                Start 14-day free trial
-              </Link>
-              <p className="mt-3 text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>No credit card required · Cancel anytime</p>
             </div>
           </FadeUp>
 
