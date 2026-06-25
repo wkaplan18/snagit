@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? 're_jNGLrMr3_2L6dQUduYXEVE5ykkFZzVP7R')
-
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const { name, company, email, phone, properties, message } = body
@@ -13,7 +11,6 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient()
-
   const { error: dbError } = await supabase
     .from('enterprise_enquiries')
     .insert({ name, company, email, phone, properties, message })
@@ -22,6 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save enquiry' }, { status: 500 })
   }
 
+  const resend = new Resend('re_jNGLrMr3_2L6dQUduYXEVE5ykkFZzVP7R')
   const { error: emailError } = await resend.emails.send({
     from: 'SnagIT <noreply@family.kaplan.co.za>',
     to: 'warren@kaplan.co.za',
@@ -40,8 +38,8 @@ export async function POST(req: NextRequest) {
   })
 
   if (emailError) {
-    console.error('Resend error:', emailError)
-    return NextResponse.json({ error: 'Enquiry saved but email failed to send' }, { status: 500 })
+    console.error('Resend error:', JSON.stringify(emailError))
+    return NextResponse.json({ error: `Email failed: ${JSON.stringify(emailError)}` }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })
