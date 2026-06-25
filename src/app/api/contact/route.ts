@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save enquiry' }, { status: 500 })
   }
 
-  await resend.emails.send({
+  const { error: emailError } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to: process.env.RESEND_NOTIFY_EMAIL!,
     subject: `New SnagIT Enterprise Enquiry — ${name}`,
@@ -38,6 +38,11 @@ export async function POST(req: NextRequest) {
       </table>
     `,
   })
+
+  if (emailError) {
+    console.error('Resend error:', emailError)
+    return NextResponse.json({ error: 'Enquiry saved but email failed to send' }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }
