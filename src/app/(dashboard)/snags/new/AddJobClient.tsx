@@ -348,6 +348,7 @@ export default function AddJobClient() {
     if (!roomName) return
     setRoomNumberBusy(true)
 
+    // Check for existing unit first
     const { data: existing } = await supabase
       .from('units').select('id').eq('project_id', projectId).eq('name', roomName).maybeSingle()
 
@@ -355,12 +356,17 @@ export default function AddJobClient() {
     if (existing) {
       _unitId = existing.id
     } else {
-      const { data: created, error } = await supabase
+      // Generate ID client-side so we don't need a SELECT-after-INSERT (avoids RLS read issues)
+      _unitId = crypto.randomUUID()
+      const { error } = await supabase
         .from('units')
-        .insert({ project_id: projectId, name: roomName, unit_type: 'standard_room' })
-        .select('id').single()
-      if (error || !created) { alert(error?.message ?? 'Could not create room'); setRoomNumberBusy(false); return }
-      _unitId = created.id
+        .insert({ id: _unitId, project_id: projectId, name: roomName, unit_type: 'standard_room' })
+      if (error) {
+        console.error('Unit insert error:', error)
+        alert(error.message)
+        setRoomNumberBusy(false)
+        return
+      }
       await supabase.from('rooms').insert(
         DEFAULT_HOTEL_ROOM_AREAS.map((name, i) => ({ unit_id: _unitId, name, room_order: i }))
       )
