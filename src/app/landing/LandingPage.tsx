@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   HardHat, BedDouble, Building, Users,
@@ -190,6 +191,14 @@ function EnterpriseModal({ onClose }: { onClose: () => void }) {
 export default function LandingPage() {
   const doubled = [...USER_TYPES, ...USER_TYPES]
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data }) => {
+      setIsLoggedIn(!!data.session)
+    })
+  }, [])
 
   return (
     <div className="font-display overflow-x-hidden bg-white" style={{ fontFamily: 'var(--font-display), system-ui, sans-serif' }}>
@@ -213,7 +222,7 @@ export default function LandingPage() {
           <a href="#how" className="text-sm font-medium text-white/60 hover:text-white transition-colors">How it works</a>
           <a href="#features" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Features</a>
           <a href="#pricing" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Pricing</a>
-          <Link href="/login" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Sign in</Link>
+          <Link href={isLoggedIn ? '/dashboard' : '/login'} className="text-sm font-medium text-white/60 hover:text-white transition-colors">{isLoggedIn ? 'Dashboard' : 'Sign in'}</Link>
         </div>
         <Link href="/register" className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95" style={{ background: '#1A56DB', boxShadow: '0 0 20px rgba(26,86,219,0.4)' }}>
           Get started free
@@ -548,7 +557,7 @@ export default function LandingPage() {
           <span className="text-sm font-semibold text-white/70">Snag<span style={{ color: '#22C55E' }}>IT</span></span>
         </div>
         <p className="text-xs text-white/30">POPIA compliant · Data stored securely · Built in South Africa</p>
-        <Link href="/login" className="text-sm font-medium text-white/50 hover:text-white transition-colors">Sign in →</Link>
+        <Link href={isLoggedIn ? '/dashboard' : '/login'} className="text-sm font-medium text-white/50 hover:text-white transition-colors">{isLoggedIn ? 'Dashboard →' : 'Sign in →'}</Link>
       </footer>
 
       {showEnterpriseModal && <EnterpriseModal onClose={() => setShowEnterpriseModal(false)} />}
