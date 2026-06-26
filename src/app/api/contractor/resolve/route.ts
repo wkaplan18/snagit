@@ -65,12 +65,16 @@ export async function POST(req: NextRequest) {
 
   const resolutionNote = formData.get('resolutionNote') as string | null
 
-  // Mark snag as fixed — use .select() so we can verify rows were actually updated
+  console.log(`[resolve] snagId=${snagId} contractorId=${contractor.id} — attempting update to fixed`)
+
+  // Mark snag as fixed
   const { error: updateError, data: updated } = await supabase
     .from('snags')
     .update({ status: 'fixed', fixed_at: new Date().toISOString() })
     .eq('id', snagId)
     .select('id, status')
+
+  console.log(`[resolve] update result: error=${JSON.stringify(updateError)} updated=${JSON.stringify(updated)}`)
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
@@ -82,18 +86,21 @@ export async function POST(req: NextRequest) {
 
   // Save resolution note if provided
   if (resolutionNote?.trim()) {
-    await supabase
+    const { error: noteError } = await supabase
       .from('snags')
       .update({ resolution_note: resolutionNote.trim() })
       .eq('id', snagId)
+    console.log(`[resolve] note update error=${JSON.stringify(noteError)}`)
   }
 
-  // Re-read AFTER all updates to catch any trigger reverting the status
+  // Re-read AFTER all updates
   const { data: verify } = await supabase
     .from('snags')
     .select('status')
     .eq('id', snagId)
     .single()
+
+  console.log(`[resolve] final verify status=${verify?.status}`)
 
   if (verify?.status !== 'fixed') {
     return NextResponse.json({

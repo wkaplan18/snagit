@@ -290,8 +290,19 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? 'Failed')
       }
-      // Mark as 'fixed' (In Review) — stays in To Do tab, not Completed
-      setLocalSnags(prev => prev.map(s => s.id === snagId ? { ...s, status: 'fixed' } : s))
+
+      // Read real statuses back from DB immediately — don't rely on page refresh
+      const statusRes = await fetch(`/api/contractor/status?token=${encodeURIComponent(token)}`)
+      if (statusRes.ok) {
+        const updates: Array<{ id: string; status: string }> = await statusRes.json()
+        setLocalSnags(prev => prev.map(s => {
+          const u = updates.find(x => x.id === s.id)
+          return u ? { ...s, status: u.status } : s
+        }))
+      } else {
+        // Fallback: optimistically set to fixed
+        setLocalSnags(prev => prev.map(s => s.id === snagId ? { ...s, status: 'fixed' } : s))
+      }
       setResolvingId(null)
     } catch (err) {
       alert(`Failed to submit: ${err instanceof Error ? err.message : 'Unknown error'}`)
