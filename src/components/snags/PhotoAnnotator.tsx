@@ -117,8 +117,11 @@ export default function PhotoAnnotator({ imageUrl, onDone, onSkip }: Props) {
 
   function done() {
     const canvas = canvasRef.current
-    if (!canvas) return onSkip()
+    if (!canvas || !ready) return onSkip()
+    // Guard against toBlob never firing (happens on some mobile WebViews)
+    const timeout = setTimeout(() => onSkip(), 6000)
     canvas.toBlob(blob => {
+      clearTimeout(timeout)
       if (!blob) return onSkip()
       onDone(new File([blob], `snag-${Date.now()}.jpg`, { type: 'image/jpeg' }))
     }, 'image/jpeg', 0.88)
@@ -143,7 +146,7 @@ export default function PhotoAnnotator({ imageUrl, onDone, onSkip }: Props) {
         />
       </div>
 
-      <div className="border-t border-slate-100 px-4 pb-6 pt-3 pb-safe">
+      <div className="border-t border-slate-100 px-4 pt-3" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
         <div className="mb-3 flex justify-center gap-2">
           <button onClick={undo} disabled={!strokeCount} className="sf-btn-secondary px-4 py-2 text-xs disabled:opacity-40">
             <Undo2 className="h-3.5 w-3.5" /> Undo

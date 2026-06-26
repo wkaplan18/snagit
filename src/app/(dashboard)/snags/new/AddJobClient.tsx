@@ -103,8 +103,13 @@ function PhotoMarkupEditor({ photoUrl, onDone, onCancel }: {
   useEffect(() => { redraw() }, [redraw])
 
   function handleDone() {
-    canvasRef.current!.toBlob(blob => {
-      if (blob) onDone(new File([blob], 'marked-up.jpg', { type: 'image/jpeg' }))
+    const canvas = canvasRef.current
+    if (!canvas) { onCancel(); return }
+    const timeout = setTimeout(() => onCancel(), 6000)
+    canvas.toBlob(blob => {
+      clearTimeout(timeout)
+      if (!blob) { onCancel(); return }
+      onDone(new File([blob], 'marked-up.jpg', { type: 'image/jpeg' }))
     }, 'image/jpeg', 0.92)
   }
 

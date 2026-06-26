@@ -275,8 +275,8 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
                 {contractor.name.charAt(0)}
               </div>
               <div>
-                <p className="text-white font-semibold">{contractor.name}</p>
-                <p className="text-blue-200 text-sm">{contractor.company ?? contractor.trade ?? 'Contractor'}</p>
+                <p className="text-blue-200 text-xs font-medium">Hi, {contractor.name} 👋</p>
+                <p className="text-white font-semibold text-sm">Your assigned jobs</p>
               </div>
             </div>
             <button
