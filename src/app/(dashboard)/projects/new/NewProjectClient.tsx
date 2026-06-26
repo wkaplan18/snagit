@@ -14,7 +14,7 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
   const [city, setCity] = useState('')
   const [province, setProvince] = useState('')
   const [description, setDescription] = useState('')
-  const [mode, setMode] = useState<'single' | 'multiple'>('single')
+  const [mode, setMode] = useState<'single' | 'multiple'>(orgType === 'hotel' ? 'multiple' : 'single')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -107,31 +107,33 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
             placeholder={`Notes about this ${terms.project.toLowerCase()}`} className="sf-input resize-none" />
         </div>
 
-        {/* Property structure toggle */}
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">{terms.project} structure</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setMode('single')}
-              className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${mode === 'single' ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
-            >
-              Single {terms.unit.toLowerCase()}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('multiple')}
-              className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${mode === 'multiple' ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
-            >
-              Multiple {terms.units.toLowerCase()}
-            </button>
+        {/* Property structure toggle — hidden for hotels (always multiple rooms) */}
+        {orgType !== 'hotel' && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">{terms.project} structure</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('single')}
+                className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${mode === 'single' ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+              >
+                Single {terms.unit.toLowerCase()}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('multiple')}
+                className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition-all ${mode === 'multiple' ? 'border-[#1A56DB] bg-[#EEF4FF] text-[#1A56DB]' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+              >
+                Multiple {terms.units.toLowerCase()}
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-slate-400">
+              {mode === 'single'
+                ? `One ${terms.unit.toLowerCase()} — areas created automatically.`
+                : `A ${terms.project.toLowerCase()} with multiple ${terms.units.toLowerCase()}.`}
+            </p>
           </div>
-          <p className="mt-1.5 text-xs text-slate-400">
-            {mode === 'single'
-              ? `One ${terms.unit.toLowerCase()} — areas created automatically.`
-              : `A ${terms.project.toLowerCase()} with multiple ${terms.units.toLowerCase()}.`}
-          </p>
-        </div>
+        )}
 
         {error && <p className="text-xs text-red-600">{error}</p>}
 
