@@ -53,12 +53,13 @@ function UnitSnags({ projectId, unitId, terms, bare = false }: { projectId: stri
   )
 }
 
-export default function ProjectClient({ project, units, contractors, terms, orgType }: { project: ProjectInfo; units: UnitRow[]; contractors: Contractor[]; terms: DashboardTerms; orgType: OrgType }) {
+export default function ProjectClient({ project, units, contractors, terms, orgType, openCountsByUnit }: { project: ProjectInfo; units: UnitRow[]; contractors: Contractor[]; terms: DashboardTerms; orgType: OrgType; openCountsByUnit: Record<string, number> }) {
   const isSingleProperty = units.length === 1 && units[0].name === project.name
   const [openUnit, setOpenUnit] = useState<string | null>(units.length === 1 ? units[0].id : null)
   const [showAddUnit, setShowAddUnit] = useState(units.length === 0)
   const [unitName, setUnitName] = useState('')
   const isHotel = orgType === 'hotel'
+  const displayUnits = isHotel ? units.filter(u => (openCountsByUnit[u.id] ?? 0) > 0) : units
   const unitTypeOptions = isHotel ? HOTEL_UNIT_TYPES : BUILDER_UNIT_TYPES
   const [unitType, setUnitType] = useState<UnitType>(isHotel ? 'standard_room' : 'apartment')
   const [seedRooms, setSeedRooms] = useState(true)
@@ -155,11 +156,21 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
             </Link>
           )}
 
-          {isHotel && units.length === 0 && (
+          {isHotel && displayUnits.length === 0 && (
             <div className="sf-card flex flex-col items-center p-8 text-center">
-              <Home className="mb-3 h-8 w-8 text-slate-300" />
-              <p className="text-sm font-medium text-slate-700">No rooms logged yet</p>
-              <p className="mt-1 text-xs text-slate-400">Tap &quot;Log an issue&quot; above — enter the room number and it&apos;s created automatically.</p>
+              {units.length === 0 ? (
+                <>
+                  <Home className="mb-3 h-8 w-8 text-slate-300" />
+                  <p className="text-sm font-medium text-slate-700">No rooms logged yet</p>
+                  <p className="mt-1 text-xs text-slate-400">Tap &quot;Log an issue&quot; above — enter the room number and it&apos;s created automatically.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl mb-2">✓</p>
+                  <p className="text-sm font-medium text-slate-700">All clear</p>
+                  <p className="mt-1 text-xs text-slate-400">No open issues across any rooms.</p>
+                </>
+              )}
             </div>
           )}
 
@@ -196,8 +207,9 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
             </div>
           ) : (
             <div className="space-y-3">
-              {units.map(u => {
+              {displayUnits.map(u => {
                 const open = openUnit === u.id
+                const openCount = openCountsByUnit[u.id] ?? 0
                 return (
                   <div key={u.id} className="sf-card overflow-hidden">
                     <button onClick={() => setOpenUnit(open ? null : u.id)} className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors">
@@ -210,7 +222,14 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                           {!isHotel && <p className="text-xs capitalize text-slate-400">{u.unit_type.replace(/_/g, ' ')}</p>}
                         </div>
                       </div>
-                      {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+                      <div className="flex items-center gap-2">
+                        {openCount > 0 && (
+                          <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-red-100 px-1.5 text-xs font-bold text-red-600">
+                            {openCount}
+                          </span>
+                        )}
+                        {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+                      </div>
                     </button>
                     {open && <UnitSnags projectId={project.id} unitId={u.id} terms={terms} />}
                   </div>
