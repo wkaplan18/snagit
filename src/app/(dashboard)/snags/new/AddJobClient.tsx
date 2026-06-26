@@ -359,7 +359,7 @@ export default function AddJobClient() {
         .from('units')
         .insert({ project_id: projectId, name: roomName, unit_type: 'standard_room' })
         .select('id').single()
-      if (error || !created) { alert('Could not create room'); setRoomNumberBusy(false); return }
+      if (error || !created) { alert(error?.message ?? 'Could not create room'); setRoomNumberBusy(false); return }
       _unitId = created.id
       await supabase.from('rooms').insert(
         DEFAULT_HOTEL_ROOM_AREAS.map((name, i) => ({ unit_id: _unitId, name, room_order: i }))
