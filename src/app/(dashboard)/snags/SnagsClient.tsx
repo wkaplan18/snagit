@@ -117,11 +117,37 @@ export default function SnagsClient({ initialSnags, projects, terms, fixedCount 
             Tap &ldquo;Add {issue}&rdquo; above to log your first one.
           </p>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {snags.map(s => <SnagCard key={s.id} snag={s} />)}
-        </div>
-      )}
+      ) : (() => {
+        // Group by unit when multiple units are present
+        const unitIds = [...new Set(snags.map(s => s.unit_id))]
+        const grouped = unitIds.length > 1
+
+        if (!grouped) {
+          return (
+            <div className="space-y-2">
+              {snags.map(s => <SnagCard key={s.id} snag={s} />)}
+            </div>
+          )
+        }
+
+        const byUnit = unitIds.map(uid => ({
+          unitName: snags.find(s => s.unit_id === uid)?.unit?.name ?? uid,
+          snags: snags.filter(s => s.unit_id === uid),
+        }))
+
+        return (
+          <div className="space-y-5">
+            {byUnit.map(group => (
+              <div key={group.unitName}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{group.unitName}</p>
+                <div className="space-y-2">
+                  {group.snags.map(s => <SnagCard key={s.id} snag={s} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }

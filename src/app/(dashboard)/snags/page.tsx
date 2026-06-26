@@ -15,6 +15,7 @@ export default async function SnagsPage() {
       *, attachments(*),
       contractor:contractors(id, name, company, whatsapp, trade, access_token),
       room:rooms(id, name),
+      unit:units(id, name),
       project:projects(id, name)
     `).in('status', ['open', 'assigned', 'rejected']).order('created_at', { ascending: false }),
     supabase.from('projects').select('id, name').order('name'),
