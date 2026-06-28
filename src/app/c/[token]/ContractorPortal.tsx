@@ -320,7 +320,7 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
     <div className="min-h-screen bg-slate-50 pb-12">
       {viewingPhoto && <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />}
 
-      <div className="bg-[#1A56DB] px-4 pt-safe pb-4">
+      <div className="px-4 pt-safe pb-4" style={{ background: '#050E1F' }}>
         <div className="mx-auto max-w-lg pt-4">
           {/* Logo + refresh row */}
           <div className="flex items-center justify-between mb-1">
@@ -342,7 +342,7 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
                 <p className="text-xl font-extrabold leading-none tracking-tight text-white">
                   Snag<span style={{ color: '#22C55E' }}>IT</span>
                 </p>
-                <p className="text-[10px] text-blue-200 font-medium tracking-wide mt-0.5">Log it. Assign it. Fixed.</p>
+                <p className="text-[10px] font-medium tracking-wide mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>Log it. Assign it. Fixed.</p>
               </div>
             </div>
             <button
@@ -359,7 +359,7 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
               {contractor.name.charAt(0)}
             </div>
             <div>
-              <p className="text-blue-200 text-xs font-medium">Hi, {contractor.name} 👋</p>
+              <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>Hi, {contractor.name} 👋</p>
               <p className="text-white font-semibold text-sm">Your assigned jobs</p>
             </div>
           </div>

@@ -224,8 +224,8 @@ export default function LandingPage() {
           <a href="#pricing" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Pricing</a>
           <Link href={isLoggedIn ? '/dashboard' : '/login'} className="text-sm font-medium text-white/60 hover:text-white transition-colors">{isLoggedIn ? 'Dashboard' : 'Sign in'}</Link>
         </div>
-        <Link href="/register" className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95" style={{ background: '#1A56DB', boxShadow: '0 0 20px rgba(26,86,219,0.4)' }}>
-          Get started free
+        <Link href={isLoggedIn ? '/dashboard' : '/register'} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95" style={{ background: '#1A56DB', boxShadow: '0 0 20px rgba(26,86,219,0.4)' }}>
+          {isLoggedIn ? 'Dashboard' : 'Get started free'}
         </Link>
       </nav>
 
