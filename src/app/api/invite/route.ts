@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'noreply@snagitapp.co.za'
+const FROM = 'noreply@family.kaplan.co.za'
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://snagitapp.co.za'
 
 export async function POST(req: NextRequest) {
@@ -111,8 +111,8 @@ export async function POST(req: NextRequest) {
   })
 
   if (emailError) {
-    console.error('Resend error:', emailError)
-    return NextResponse.json({ error: 'Invite created but email failed to send' }, { status: 500 })
+    console.error('Resend invite error:', JSON.stringify(emailError))
+    return NextResponse.json({ error: `Email failed: ${JSON.stringify(emailError)}` }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })
