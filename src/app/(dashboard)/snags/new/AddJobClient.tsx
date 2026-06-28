@@ -405,18 +405,18 @@ export default function AddJobClient() {
   async function addRoom() {
     if (!newRoomName.trim()) return
     setRoomBusy(true)
-    const { data, error } = await supabase
+    const newId = crypto.randomUUID()
+    const newRoom: Room = { id: newId, unit_id: unitId, name: newRoomName.trim(), room_order: rooms.length, created_at: new Date().toISOString() }
+    const { error } = await supabase
       .from('rooms')
-      .insert({ unit_id: unitId, name: newRoomName.trim(), room_order: rooms.length })
-      .select('*')
-      .single()
-    if (!error && data) {
-      setRooms(r => [...r, data])
-      setRoomId(data.id)
+      .insert(newRoom)
+    if (!error) {
+      setRooms(r => [...r, newRoom])
+      setRoomId(newId)
       setNewRoomName('')
       setAddingRoom(false)
     } else {
-      alert(error?.message ?? 'Could not add room')
+      alert(error.message ?? 'Could not add room')
     }
     setRoomBusy(false)
   }
