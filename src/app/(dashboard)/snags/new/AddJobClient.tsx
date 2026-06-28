@@ -260,7 +260,7 @@ export default function AddJobClient() {
         const projects = projectsData ?? []
         if (projects.length === 0) { router.push('/projects/new'); return }
 
-        if (projects.length > 1) {
+        if (!_projectId && projects.length > 1) {
           setAllProjects(projects)
           setOrgId(_orgId)
           setReady(true)
@@ -268,7 +268,7 @@ export default function AddJobClient() {
           return
         }
 
-        _projectId = projects[0].id
+        _projectId = _projectId || projects[0].id
 
         // Hotels & property managers: don't auto-create a unit — let the user type the unit/room number
         if (_isOnTheFly && !_unitId) {
