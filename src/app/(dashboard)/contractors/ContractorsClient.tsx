@@ -312,7 +312,7 @@ export default function ContractorsClient({ orgId, contractors, terms }: { orgId
                 </button>
                 <div className="flex flex-shrink-0 flex-col gap-1.5">
                   {(c.whatsapp || origin) && (
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 text-right">Send via</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 text-right">Send link via</p>
                   )}
                   {c.whatsapp && origin && (
                     <a
@@ -329,7 +329,7 @@ export default function ContractorsClient({ orgId, contractors, terms }: { orgId
                       href={portalMailtoLink(c)}
                       className="inline-flex items-center gap-1.5 sf-btn-secondary px-3 py-2 text-xs"
                     >
-                      <Mail className="h-3.5 w-3.5" /> Send link
+                      <Mail className="h-3.5 w-3.5" /> Email
                     </a>
                   )}
                 </div>
