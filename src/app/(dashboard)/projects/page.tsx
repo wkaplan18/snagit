@@ -10,16 +10,24 @@ export default async function ProjectsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: orgMember }, { data: projects }, { data: stats }] = await Promise.all([
+  const [{ data: orgMember }, { data: projects }, { data: snagRows }] = await Promise.all([
     supabase.from('org_members').select('org_id, organizations(org_type)').eq('user_id', user.id).limit(1).maybeSingle(),
     supabase.from('projects').select('id, name, address, city, status, image_url').order('updated_at', { ascending: false }),
-    supabase.from('snag_stats_by_project').select('*'),
+    supabase.from('snags').select('project_id, status'),
   ])
 
   const raw = orgMember?.organizations
   const org = Array.isArray(raw) ? raw[0] : raw as { org_type?: string } | null | undefined
   const terms = DASHBOARD_TERMS[(org?.org_type ?? 'builder') as OrgType]
-  const statsByProject = new Map((stats ?? []).map(s => [s.project_id, s]))
+
+  const ACTIVE = new Set(['open', 'assigned', 'rejected'])
+  const countsByProject: Record<string, { active: number; review: number; approved: number }> = {}
+  for (const s of snagRows ?? []) {
+    const c = countsByProject[s.project_id] ?? (countsByProject[s.project_id] = { active: 0, review: 0, approved: 0 })
+    if (ACTIVE.has(s.status)) c.active++
+    else if (s.status === 'fixed') c.review++
+    else if (s.status === 'approved') c.approved++
+  }
 
   return (
     <div className="mx-auto max-w-lg px-4 pb-24 pt-6">
@@ -42,8 +50,7 @@ export default async function ProjectsPage() {
       ) : (
         <div className="space-y-3">
           {(projects ?? []).map(p => {
-            const s = statsByProject.get(p.id)
-            const pct = s?.completion_pct ?? 0
+            const c = countsByProject[p.id] ?? { active: 0, review: 0, approved: 0 }
             return (
               <Link key={p.id} href={`/projects/${p.id}`} className="sf-card block p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors">
                 <div className="flex items-start justify-between gap-3">
@@ -57,14 +64,12 @@ export default async function ProjectsPage() {
                   </div>
                   <span className="sf-badge bg-slate-50 border-slate-200 text-slate-600 capitalize">{p.status}</span>
                 </div>
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>{(s?.open_snags ?? 0) + (s?.in_progress_snags ?? 0)} active · {s?.resolved_snags ?? 0} done</span>
-                    <span className="font-semibold text-slate-700">{pct}%</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-[#1A56DB]" style={{ width: `${pct}%` }} />
-                  </div>
+                <div className="mt-2.5 flex items-center gap-3 text-xs">
+                  <span className={c.active > 0 ? 'font-medium text-red-600' : 'text-slate-400'}>{c.active} active</span>
+                  <span className="text-slate-200">·</span>
+                  <span className={c.review > 0 ? 'font-medium text-orange-500' : 'text-slate-400'}>{c.review} review</span>
+                  <span className="text-slate-200">·</span>
+                  <span className={c.approved > 0 ? 'font-medium text-green-600' : 'text-slate-400'}>{c.approved} approved</span>
                 </div>
               </Link>
             )
