@@ -311,6 +311,9 @@ export default function ContractorsClient({ orgId, contractors, terms }: { orgId
                   )}
                 </button>
                 <div className="flex flex-shrink-0 flex-col gap-1.5">
+                  {(c.whatsapp || origin) && (
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 text-right">Send via</p>
+                  )}
                   {c.whatsapp && origin && (
                     <a
                       href={waLink(c.whatsapp, `Hi ${c.name}, here's your portal link — it shows all jobs assigned to you, now and in future:\n${origin}/c/${c.access_token}?t=${Date.now()}`)}
