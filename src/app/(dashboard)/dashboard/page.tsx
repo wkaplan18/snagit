@@ -41,16 +41,17 @@ export default async function DashboardPage() {
   ])
 
   // Compute per-project stats using the same ACTIVE_STATUSES as the rest of the app
-  const statsMap: Record<string, { total: number; open: number; approved: number }> = {}
+  const statsMap: Record<string, { total: number; open: number; approved: number; rejected: number }> = {}
   for (const s of snagRows ?? []) {
-    const c = statsMap[s.project_id] ?? (statsMap[s.project_id] = { total: 0, open: 0, approved: 0 })
+    const c = statsMap[s.project_id] ?? (statsMap[s.project_id] = { total: 0, open: 0, approved: 0, rejected: 0 })
     c.total++
     if (ACTIVE.has(s.status)) c.open++
     if (s.status === 'approved') c.approved++
+    if (s.status === 'rejected') c.rejected++
   }
 
   const projectStats = (projects ?? []).map(p => {
-    const c = statsMap[p.id] ?? { total: 0, open: 0, approved: 0 }
+    const c = statsMap[p.id] ?? { total: 0, open: 0, approved: 0, rejected: 0 }
     return {
       project_id: p.id,
       project_name: p.name,
@@ -59,9 +60,12 @@ export default async function DashboardPage() {
       in_progress_snags: 0,
       critical_snags: 0,
       resolved_snags: c.approved,
+      rejected_snags: c.rejected,
       completion_pct: c.total > 0 ? Math.round((c.approved / c.total) * 100) : 0,
     }
   })
+
+  const totalRejected = (snagRows ?? []).filter(s => s.status === 'rejected').length
 
   const org = Array.isArray(orgMember.organizations)
     ? orgMember.organizations[0]
@@ -76,6 +80,7 @@ export default async function DashboardPage() {
       projects={projects ?? []}
       projectStats={projectStats}
       needsReview={needsReview ?? 0}
+      totalRejected={totalRejected}
     />
   )
 }

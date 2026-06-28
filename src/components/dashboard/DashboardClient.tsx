@@ -2,7 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import Link from 'next/link'
-import { CheckCircle, Clock, FolderOpen, Plus, ClipboardCheck, Settings } from 'lucide-react'
+import { CheckCircle, Clock, FolderOpen, Plus, ClipboardCheck, Settings, XCircle } from 'lucide-react'
 import type { ProjectStats, DashboardTerms } from '@/types'
 
 interface Props {
@@ -11,10 +11,11 @@ interface Props {
   projects: Array<{ id: string; name: string; status: string; image_url: string | null; city: string | null }>
   projectStats: Array<ProjectStats & { project_name: string; project_id: string }>
   needsReview: number
+  totalRejected: number
 }
 
 
-export default function DashboardClient({ orgName, terms, projects, projectStats, needsReview }: Props) {
+export default function DashboardClient({ orgName, terms, projects, projectStats, needsReview, totalRejected }: Props) {
   const totals = projectStats.reduce(
     (acc, p) => ({
       total: acc.total + (p.total_snags ?? 0),
@@ -148,6 +149,16 @@ export default function DashboardClient({ orgName, terms, projects, projectStats
               <CheckCircle className="h-5 w-5 text-green-200 mt-0.5" />
             </div>
           </div>
+
+          <Link href="/snags?tab=rejected" className="sf-card p-4 transition-colors hover:bg-slate-50">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Rejected</p>
+                <p className={`mt-1 text-3xl font-bold ${totalRejected > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{totalRejected}</p>
+              </div>
+              <XCircle className={`h-5 w-5 mt-0.5 ${totalRejected > 0 ? 'text-amber-300' : 'text-slate-200'}`} />
+            </div>
+          </Link>
         </div>
 
         {/* Projects */}
