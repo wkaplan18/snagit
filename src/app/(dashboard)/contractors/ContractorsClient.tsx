@@ -295,20 +295,34 @@ export default function ContractorsClient({ orgId, contractors, terms }: { orgId
         <div className="space-y-3">
           {filtered.map(c => (
             <div key={c.id} className="sf-card overflow-hidden">
-              <button onClick={() => startEdit(c)} className="w-full p-4 text-left">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-900">{c.name}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.is_internal ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
-                    {c.is_internal ? terms.internalLabel : terms.externalLabel}
-                  </span>
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">{c.name}</p>
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.is_internal ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
+                        {c.is_internal ? terms.internalLabel : terms.externalLabel}
+                      </span>
+                      {[c.trade, c.company].filter(Boolean).length > 0 && (
+                        <p className="text-xs text-slate-500">{[c.trade, c.company].filter(Boolean).join(' · ')}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    {c.whatsapp && (
+                      <p className="flex items-center gap-1 text-xs text-slate-500">
+                        <MessageCircle className="h-3 w-3 text-slate-400" /> {c.whatsapp}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => startEdit(c)}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 active:scale-95 transition-[transform,background-color]"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500">{[c.trade, c.company].filter(Boolean).join(' · ') || '—'} · <span className="text-[#1A56DB]">edit</span></p>
-                {c.whatsapp && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                    <MessageCircle className="h-3 w-3" /> {c.whatsapp}
-                  </p>
-                )}
-              </button>
+              </div>
               {(c.whatsapp || origin) && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Send link via</p>
