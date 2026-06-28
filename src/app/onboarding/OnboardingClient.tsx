@@ -23,7 +23,7 @@ const ORG_NAME_CONFIG: Record<OrgType, { label: string; placeholder: string; hin
   builder:          { label: 'Company name',  placeholder: 'Your company name',  hint: 'Your projects, snags and contractors all live under your company.',           button: 'Create company' },
   hotel:            { label: 'Property name', placeholder: 'Your property name', hint: 'Your rooms, maintenance jobs and staff all live under your property.',        button: 'Create property' },
   property_manager: { label: 'Business name', placeholder: 'Your business name', hint: 'Your properties, tenants and maintenance jobs all live under your business.', button: 'Create business' },
-  body_corporate:   { label: 'Complex name',  placeholder: 'Your complex name',  hint: 'Your common areas, maintenance jobs and contractors all live here.',          button: 'Create complex' },
+  body_corporate:   { label: 'Company name',  placeholder: 'e.g. ABC Body Corporate Management', hint: 'Your complexes, jobs and contractors all live under your company. Add each complex separately after setup.', button: 'Create company' },
 }
 
 export default function OnboardingClient({ email }: { email: string }) {
