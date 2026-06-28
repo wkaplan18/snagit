@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Home, ChevronDown, ChevronRight, Camera, MapPin, Printer, AlertCircle, X, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Home, ChevronDown, ChevronRight, Camera, MapPin, Printer, AlertCircle, X, Loader2, Link2 } from 'lucide-react'
 import { waLink } from '@/lib/whatsappLink'
 import SnagCard from '@/components/snags/SnagCard'
 import { DEFAULT_ROOMS, DEFAULT_HOTEL_ROOM_AREAS, HOTEL_UNIT_TYPES, BUILDER_UNIT_TYPES, type Contractor, type DashboardTerms, type OrgType, type Room, type Snag, type UnitType } from '@/types'
@@ -58,6 +58,8 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
   const [showAddUnit, setShowAddUnit] = useState(units.length === 0)
   const [unitName, setUnitName] = useState('')
   const isHotel = orgType === 'hotel' || orgType === 'property_manager' || orgType === 'body_corporate'
+  const hasTenantPortal = orgType === 'property_manager' || orgType === 'body_corporate'
+  const [linkCopied, setLinkCopied] = useState(false)
   const displayUnits = isHotel ? units.filter(u => (openCountsByUnit[u.id] ?? 0) > 0) : units
   const unitTypeOptions = isHotel ? HOTEL_UNIT_TYPES : BUILDER_UNIT_TYPES
   const [unitType, setUnitType] = useState<UnitType>(isHotel ? 'standard_room' : 'apartment')
@@ -149,6 +151,20 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
         </div>
         <div className="flex items-center gap-2">
           <span className="sf-badge bg-slate-50 border-slate-200 text-slate-600 capitalize">{project.status}</span>
+          {hasTenantPortal && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/report/${project.id}`)
+                setLinkCopied(true)
+                setTimeout(() => setLinkCopied(false), 2000)
+              }}
+              title="Copy tenant report link"
+              className="relative flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              {linkCopied ? 'Copied!' : 'Tenant link'}
+            </button>
+          )}
           <Link
             href={`/snags/report?project_id=${project.id}`}
             target="_blank"
