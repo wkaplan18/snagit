@@ -56,6 +56,8 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
   const [inviteError, setInviteError] = useState('')
   const [inviteSuccess, setInviteSuccess] = useState('')
   const [localInvites, setLocalInvites] = useState<PendingInvite[]>(pendingInvites)
+  const [localMembers, setLocalMembers] = useState<Member[]>(members)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
   const supabase = createClient()
   const router = useRouter()
@@ -120,6 +122,18 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
       body: JSON.stringify({ id }),
     })
     if (res.ok) setLocalInvites(prev => prev.filter(i => i.id !== id))
+  }
+
+  async function removeMember(userId: string, memberEmail: string) {
+    if (!confirm(`Remove ${memberEmail} from your team?`)) return
+    setRemovingId(userId)
+    const res = await fetch('/api/team/remove', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+    if (res.ok) setLocalMembers(prev => prev.filter(m => m.user_id !== userId))
+    setRemovingId(null)
   }
 
   return (
@@ -230,7 +244,7 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
 
           {/* Current members */}
           <div className="sf-card mb-3 divide-y divide-slate-100 overflow-hidden">
-            {members.map(m => (
+            {localMembers.map(m => (
               <div key={m.user_id} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EEF4FF] text-[11px] font-bold text-[#1A56DB]">
                   {initials(m.name, m.email)}
@@ -243,8 +257,17 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-slate-600">
                     {m.role}
                   </span>
-                  {m.user_id === currentUserId && (
+                  {m.user_id === currentUserId ? (
                     <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">You</span>
+                  ) : (
+                    <button
+                      onClick={() => removeMember(m.user_id, m.email)}
+                      disabled={removingId === m.user_id}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
+                      title="Remove member"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
               </div>
