@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'noreply@snagitapp.co.za'
+const FROM = 'hello@snagitapp.co.za'
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://snagitapp.co.za'
 
 export async function POST(req: NextRequest) {
@@ -67,7 +67,8 @@ export async function POST(req: NextRequest) {
   const { error: emailError } = await resend.emails.send({
     from: `SnagIT <${FROM}>`,
     to: email,
-    subject: `You've been invited to ${orgName} on SnagIT`,
+    subject: `Join ${orgName} on SnagIT`,
+    text: `Hi,\n\nYou've been invited to join ${orgName} on SnagIT — the fault-logging platform for property and construction teams.\n\nAccept your invitation here:\n${joinUrl}\n\nThis link expires in 7 days.\n\n— The SnagIT team\nsnagitapp.co.za`,
     html: `
 <!DOCTYPE html>
 <html>
