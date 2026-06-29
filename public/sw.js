@@ -43,19 +43,7 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  // Cache-first for static assets (_next/static)
-  if (url.pathname.startsWith('/_next/static/')) {
-    event.respondWith(
-      caches.match(request).then(cached => cached || fetch(request).then(res => {
-        const clone = res.clone()
-        caches.open(CACHE).then(c => c.put(request, clone))
-        return res
-      }))
-    )
-    return
-  }
-
-  // Network-first for everything else
+  // Network-first for everything else (Next.js handles _next/static cache-busting via content hashes)
   event.respondWith(
     fetch(request).catch(() => caches.match(request))
   )
