@@ -114,23 +114,19 @@ export default function ReportClient({
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 transition-colors hover:border-[#1A56DB]/40 hover:bg-blue-50/30"
-            >
-              <Camera className="h-8 w-8" />
-              <span className="text-sm font-medium">Take photo or choose from library</span>
-            </button>
+            <div className="flex w-full flex-col gap-2">
+              <label className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 cursor-pointer transition-colors hover:border-[#1A56DB]/40 hover:bg-blue-50/30">
+                <Camera className="h-8 w-8" />
+                <span className="text-sm font-medium">Take a photo</span>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
+              </label>
+              <label className="flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white py-2.5 text-sm font-medium text-slate-600 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors">
+                Choose from Library
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+              </label>
+            </div>
           )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handlePhoto}
-          />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
         </div>
 
         {/* Title */}

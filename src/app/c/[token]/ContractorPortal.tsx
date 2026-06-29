@@ -197,12 +197,20 @@ function SnagCard({
                     </button>
                   </div>
                 ) : (
-                  <label
-                    htmlFor="resolve-photo-input"
-                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white py-3 text-sm text-slate-500 hover:border-slate-400 cursor-pointer"
-                  >
-                    <Camera className="h-4 w-4" /> Add photo (optional)
-                  </label>
+                  <div className="flex gap-2">
+                    <label
+                      htmlFor="resolve-photo-input"
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white py-2.5 text-sm text-slate-700 font-medium cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                    >
+                      <Camera className="h-4 w-4" /> Take Photo
+                    </label>
+                    <label
+                      htmlFor="resolve-library-input"
+                      className="flex-1 flex items-center justify-center rounded-xl border border-slate-300 bg-white py-2.5 text-sm text-slate-700 font-medium cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                    >
+                      Library
+                    </label>
+                  </div>
                 )}
               </div>
 
@@ -543,6 +551,14 @@ export default function ContractorPortal({ contractor, snags, token }: Props) {
       <input
         id="resolve-photo-input"
         ref={photoPickerRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
+      <input
+        id="resolve-library-input"
         type="file"
         accept="image/*"
         className="hidden"
