@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function RegisterClient() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -13,11 +16,23 @@ export default function RegisterClient() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    if (password !== confirm) {
+      setError('Passwords do not match.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signUp({
       email,
-      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+      password,
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: `${location.origin}/auth/callback`,
+      },
     })
     if (error) {
       setError(error.message)
@@ -49,7 +64,7 @@ export default function RegisterClient() {
           </svg>
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Snag<span style={{ color: '#22C55E' }}>IT</span></h1>
-        <p className="mt-1 text-sm text-slate-500">Construction, hotels & property — sorted</p>
+        <p className="mt-1 text-sm text-slate-500">Log it. Assign it. Fixed.</p>
       </div>
 
       <div className="sf-card w-full max-w-sm p-6">
@@ -62,7 +77,7 @@ export default function RegisterClient() {
             </div>
             <h2 className="text-base font-semibold text-slate-900">Check your email</h2>
             <p className="mt-2 text-sm text-slate-500">
-              We sent a link to <strong>{email}</strong>. Tap it to activate your account.
+              We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
             </p>
           </div>
         ) : (
@@ -87,6 +102,17 @@ export default function RegisterClient() {
 
             <form onSubmit={handleRegister} className="space-y-3">
               <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Full name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Jane Smith"
+                  required
+                  className="sf-input"
+                />
+              </div>
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
                 <input
                   type="email"
@@ -97,9 +123,31 @@ export default function RegisterClient() {
                   className="sf-input"
                 />
               </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Min. 8 characters"
+                  required
+                  className="sf-input"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
+                <input
+                  type="password"
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="sf-input"
+                />
+              </div>
               {error && <p className="text-xs text-red-600">{error}</p>}
               <button type="submit" disabled={loading} className="sf-btn-primary w-full">
-                {loading ? 'Sending…' : 'Send me a link'}
+                {loading ? 'Creating account…' : 'Create account'}
               </button>
             </form>
           </>
