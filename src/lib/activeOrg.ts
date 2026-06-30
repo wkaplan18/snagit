@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+// cookies() is read-only in Server Components — writes must go via Route Handlers (see /api/activate-org, /api/switch-org)
 import type { OrgType } from '@/types'
 
 export interface OrgSummary {
@@ -31,12 +32,3 @@ export async function getActiveOrgId(userId: string, orgs: OrgSummary[]): Promis
   return orgs[0].org_id
 }
 
-export async function setActiveOrgCookie(orgId: string) {
-  const cookieStore = await cookies()
-  cookieStore.set('snagit_active_org', orgId, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365,
-  })
-}
