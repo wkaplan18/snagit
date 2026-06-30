@@ -74,9 +74,7 @@ export async function POST(req: NextRequest) {
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px">
         <!-- Header -->
         <tr><td style="background:#ffffff;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;border-bottom:1px solid #E2E8F0">
-          <p style="margin:0 0 6px;font-size:18px;font-weight:800;letter-spacing:0.05em;color:#1E3A5F">
-            Snag<span style="color:#1A56DB">IT</span>
-          </p>
+          <img src="https://snagitapp.co.za/icons/icon-192.png" alt="SnagIT" width="48" height="48" style="border-radius:12px;display:block;margin:0 auto 10px" />
           <p style="margin:0;font-size:20px;font-weight:700;color:#1E293B">You've been invited</p>
         </td></tr>
         <!-- Body -->
