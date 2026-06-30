@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import ProjectClient from './ProjectClient'
 import { DASHBOARD_TERMS } from '@/types'
 import type { Room, OrgType, Snag } from '@/types'
@@ -10,19 +11,20 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: orgMember }, { data: project }, { data: units }, { data: contractors }, { data: allSnags }] = await Promise.all([
-    supabase.from('org_members').select('org_id, organizations(org_type)').eq('user_id', user.id).limit(1).maybeSingle(),
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+
+  const [{ data: project }, { data: units }, { data: contractors }, { data: allSnags }] = await Promise.all([
     supabase.from('projects').select('id, org_id, name, address, city, province, status, description, client_name, client_whatsapp, share_token').eq('id', id).maybeSingle(),
     supabase.from('units').select('id, name, unit_type, floor_number, rooms(id, unit_id, name, room_order, created_at)').eq('project_id', id).order('created_at', { ascending: true }),
-    supabase.from('contractors').select('*').eq('is_active', true).order('name'),
+    supabase.from('contractors').select('*').eq('org_id', orgId).eq('is_active', true).order('name'),
     supabase.from('snags').select('*, attachments(*), contractor:contractors(id, name, company), room:rooms(id, name), unit:units(id, name)').eq('project_id', id).order('created_at', { ascending: false }),
   ])
 
   if (!project) notFound()
 
-  const raw = orgMember?.organizations
-  const org = Array.isArray(raw) ? raw[0] : raw as { org_type?: string } | null | undefined
-  const orgType = (org?.org_type ?? 'builder') as OrgType
+  const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
   const terms = DASHBOARD_TERMS[orgType]
 
   const ACTIVE = ['open', 'assigned', 'rejected']

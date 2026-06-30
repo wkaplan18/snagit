@@ -3,10 +3,14 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 export default function RegisterClient() {
+  const searchParams = useSearchParams()
+  const prefillEmail = searchParams.get('email') ?? ''
+  const next = searchParams.get('next') ?? '/dashboard'
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(prefillEmail)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,7 +35,7 @@ export default function RegisterClient() {
       password,
       options: {
         data: { full_name: name },
-        emailRedirectTo: `${location.origin}/auth/callback`,
+        emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     })
     if (error) {

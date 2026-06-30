@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { setActiveOrgCookie } from '@/lib/activeOrg'
 import JoinClient from './JoinClient'
 
 export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {
@@ -57,6 +58,7 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
     }
 
     await admin.from('org_invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id)
+    await setActiveOrgCookie(invite.org_id)
 
     redirect('/dashboard')
   }

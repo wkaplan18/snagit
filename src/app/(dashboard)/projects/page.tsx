@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, MapPin, FolderOpen } from 'lucide-react'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
 
@@ -10,15 +11,15 @@ export default async function ProjectsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: orgMember }, { data: projects }, { data: snagRows }] = await Promise.all([
-    supabase.from('org_members').select('org_id, organizations(org_type)').eq('user_id', user.id).limit(1).maybeSingle(),
-    supabase.from('projects').select('id, name, address, city, status, image_url').order('updated_at', { ascending: false }),
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+  const terms = DASHBOARD_TERMS[(activeOrg?.org?.org_type ?? 'builder') as OrgType]
+
+  const [{ data: projects }, { data: snagRows }] = await Promise.all([
+    supabase.from('projects').select('id, name, address, city, status, image_url').eq('org_id', orgId).order('updated_at', { ascending: false }),
     supabase.from('snags').select('project_id, status'),
   ])
-
-  const raw = orgMember?.organizations
-  const org = Array.isArray(raw) ? raw[0] : raw as { org_type?: string } | null | undefined
-  const terms = DASHBOARD_TERMS[(org?.org_type ?? 'builder') as OrgType]
 
   const ACTIVE = new Set(['open', 'assigned', 'rejected'])
   const countsByProject: Record<string, { active: number; review: number; approved: number }> = {}

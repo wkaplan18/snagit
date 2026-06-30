@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { FileText } from 'lucide-react'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
 import ShareButton from './ShareButton'
@@ -12,20 +13,18 @@ export default async function ReportsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: orgMember } = await supabase
-    .from('org_members')
-    .select('organizations(org_type)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+  const terms = DASHBOARD_TERMS[(activeOrg?.org?.org_type ?? 'builder') as OrgType]
 
-  const raw = orgMember?.organizations
-  const org = Array.isArray(raw) ? raw[0] : raw as { org_type?: string } | null | undefined
-  const terms = DASHBOARD_TERMS[(org?.org_type ?? 'builder') as OrgType]
+  const { data: projectInfo } = await supabase.from('projects').select('id, share_token, client_name').eq('org_id', orgId)
+  const projectIds = (projectInfo ?? []).map(p => p.id)
 
-  const [{ data: stats }, { data: projectInfo }] = await Promise.all([
-    supabase.from('snag_stats_by_project').select('*').order('project_name'),
-    supabase.from('projects').select('id, share_token, client_name'),
+  const [{ data: stats }] = await Promise.all([
+    projectIds.length > 0
+      ? supabase.from('snag_stats_by_project').select('*').in('project_id', projectIds).order('project_name')
+      : Promise.resolve({ data: [] }),
   ])
 
   const projectMap = new Map(

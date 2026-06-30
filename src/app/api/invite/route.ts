@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -17,19 +18,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Valid email required' }, { status: 400 })
   }
 
-  // Get the user's org
-  const { data: membership } = await supabase
-    .from('org_members')
-    .select('org_id, organizations(name)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .single()
+  // Get the user's active org
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = await getActiveOrgId(user.id, allOrgs)
+  if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
-  if (!membership) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
-
-  const orgId = membership.org_id
-  const org = Array.isArray(membership.organizations) ? membership.organizations[0] : membership.organizations as { name?: string } | null
-  const orgName = org?.name ?? 'Your team'
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+  const orgName = activeOrg?.org?.name ?? 'Your team'
 
   // Don't invite someone already in the org
   const admin = createAdminClient()
@@ -78,11 +73,11 @@ export async function POST(req: NextRequest) {
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px">
         <!-- Header -->
-        <tr><td style="background:linear-gradient(150deg,#1E63EB 0%,#1340B2 100%);border-radius:16px 16px 0 0;padding:28px 32px;text-align:center">
-          <p style="margin:0 0 2px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.5)">
-            Snag<span style="color:#4ADE80">IT</span>
+        <tr><td style="background:#ffffff;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;border-bottom:1px solid #E2E8F0">
+          <p style="margin:0 0 6px;font-size:18px;font-weight:800;letter-spacing:0.05em;color:#1E3A5F">
+            Snag<span style="color:#1A56DB">IT</span>
           </p>
-          <p style="margin:0;font-size:20px;font-weight:700;color:#fff">You've been invited</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:#1E293B">You've been invited</p>
         </td></tr>
         <!-- Body -->
         <tr><td style="background:#fff;padding:32px;border-radius:0 0 16px 16px">
@@ -124,15 +119,11 @@ export async function DELETE(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verify the invite belongs to the user's org before deleting
-  const { data: membership } = await supabase
-    .from('org_members')
-    .select('org_id')
-    .eq('user_id', user.id)
-    .limit(1)
-    .single()
-
-  if (!membership) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  // Verify the invite belongs to the user's active org before deleting
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = await getActiveOrgId(user.id, allOrgs)
+  if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const membership = { org_id: orgId }
 
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'Invite ID required' }, { status: 400 })

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import SnagDetailClient from './SnagDetailClient'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
@@ -10,8 +11,11 @@ export default async function SnagDetailPage({ params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: orgMember }, { data: snag }, { data: contractors }] = await Promise.all([
-    supabase.from('org_members').select('org_id, organizations(org_type)').eq('user_id', user.id).limit(1).maybeSingle(),
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+
+  const [{ data: snag }, { data: contractors }] = await Promise.all([
     supabase.from('snags').select(`
       *,
       attachments(*),
@@ -20,7 +24,7 @@ export default async function SnagDetailPage({ params }: { params: Promise<{ id:
       unit:units(id, name),
       project:projects(id, name)
     `).eq('id', id).maybeSingle(),
-    supabase.from('contractors').select('*').eq('is_active', true).order('name'),
+    supabase.from('contractors').select('*').eq('org_id', orgId).eq('is_active', true).order('name'),
   ])
 
   if (!snag) notFound()
@@ -29,9 +33,7 @@ export default async function SnagDetailPage({ params }: { params: Promise<{ id:
     .from('rooms').select('id, name, room_order')
     .eq('unit_id', snag.unit_id).order('room_order')
 
-  const raw = orgMember?.organizations
-  const org = Array.isArray(raw) ? raw[0] : raw as { org_type?: string } | null | undefined
-  const terms = DASHBOARD_TERMS[(org?.org_type ?? 'builder') as OrgType]
+  const terms = DASHBOARD_TERMS[(activeOrg?.org?.org_type ?? 'builder') as OrgType]
 
   // Supabase types FK joins as arrays — flatten each to a single object
   const one = <T,>(v: T | T[] | null | undefined): T | null =>
@@ -45,5 +47,5 @@ export default async function SnagDetailPage({ params }: { params: Promise<{ id:
     project: one(snag.project),
   }
 
-  return <SnagDetailClient snag={flat} contractors={contractors ?? []} terms={terms} orgId={orgMember?.org_id ?? ''} rooms={rooms ?? []} />
+  return <SnagDetailClient snag={flat} contractors={contractors ?? []} terms={terms} orgId={orgId} rooms={rooms ?? []} />
 }

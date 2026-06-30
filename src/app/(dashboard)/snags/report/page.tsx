@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { DASHBOARD_TERMS, STATUS_CONFIG } from '@/types'
 import type { OrgType, Snag } from '@/types'
 import ReportClient from './ReportClient'
@@ -48,24 +49,20 @@ export default async function SnagReportPage({
       : snagsQuery.eq('status', statuses[0])
   }
 
-  const [{ data: orgMember }, { data: snags }, { data: project }] = await Promise.all([
-    supabase
-      .from('org_members')
-      .select('organizations(org_type, name)')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle(),
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+
+  const [{ data: snags }, { data: project }] = await Promise.all([
     snagsQuery,
     projectId
       ? supabase.from('projects').select('name').eq('id', projectId).single()
       : Promise.resolve({ data: null }),
   ])
 
-  const raw = orgMember?.organizations
-  const org = (Array.isArray(raw) ? raw[0] : raw) as { org_type?: string; name?: string } | null
-  const orgType = (org?.org_type ?? 'builder') as OrgType
+  const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
   const terms = DASHBOARD_TERMS[orgType]
-  const orgName = org?.name ?? 'My Organisation'
+  const orgName = activeOrg?.org?.name ?? 'My Organisation'
 
   const allSnags = (snags ?? []) as Snag[]
 

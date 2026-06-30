@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ContractorsClient from './ContractorsClient'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
 
@@ -11,19 +12,14 @@ export default async function ContractorsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: orgMember } = await supabase
-    .from('org_members')
-    .select('org_id, organizations(org_type)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
+  const allOrgs = await getAllUserOrgs(user.id)
+  if (allOrgs.length === 0) redirect('/onboarding')
 
-  if (!orgMember) redirect('/onboarding')
-
-  const orgId = orgMember.org_id
+  const orgId = (await getActiveOrgId(user.id, allOrgs))!
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
 
   const [{ data: contractors }, { data: projects }] = await Promise.all([
-    supabase.from('contractors').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+    supabase.from('contractors').select('*').eq('org_id', orgId).eq('is_active', true).order('created_at', { ascending: false }),
     supabase.from('projects').select('id').eq('org_id', orgId),
   ])
 
@@ -45,8 +41,7 @@ export default async function ContractorsPage() {
     }
   }
 
-  const org = Array.isArray(orgMember.organizations) ? orgMember.organizations[0] : orgMember.organizations as { org_type?: string } | null
-  const orgType = (org?.org_type ?? 'builder') as OrgType
+  const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
   const terms = DASHBOARD_TERMS[orgType]
 
   return <ContractorsClient orgId={orgId} contractors={contractors ?? []} terms={terms} openCountByContractor={openCountByContractor} />

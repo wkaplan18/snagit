@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import NewProjectClient from './NewProjectClient'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
 
@@ -9,19 +10,13 @@ export default async function NewProjectPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: orgMember } = await supabase
-    .from('org_members')
-    .select('org_id, organizations(org_type)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
+  const allOrgs = await getAllUserOrgs(user.id)
+  if (allOrgs.length === 0) redirect('/onboarding')
 
-  if (!orgMember) redirect('/onboarding')
-
-  const raw = orgMember?.organizations
-  const org = Array.isArray(raw) ? raw[0] : raw as { org_type?: string } | null | undefined
-  const orgType = (org?.org_type ?? 'builder') as OrgType
+  const orgId = (await getActiveOrgId(user.id, allOrgs))!
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+  const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
   const terms = DASHBOARD_TERMS[orgType]
 
-  return <NewProjectClient orgId={orgMember.org_id} terms={terms} orgType={orgType} />
+  return <NewProjectClient orgId={orgId} terms={terms} orgType={orgType} />
 }

@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginClient() {
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? '/dashboard'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
@@ -33,7 +35,7 @@ export default function LoginClient() {
         .filter(k => k.startsWith('sb-'))
         .forEach(k => localStorage.removeItem(k))
     }
-    router.push('/dashboard')
+    router.push(next)
   }
 
   async function handleGoogleLogin() {

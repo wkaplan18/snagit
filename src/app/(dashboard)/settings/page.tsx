@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import SettingsClient from './SettingsClient'
 
 export default async function SettingsPage() {
@@ -14,17 +15,10 @@ export default async function SettingsPage() {
     .eq('id', user.id)
     .single()
 
-  const { data: membership } = await supabase
-    .from('org_members')
-    .select('org_id, role, organizations(name, org_type)')
-    .eq('user_id', user.id)
-    .single()
-
-  const org = Array.isArray(membership?.organizations)
-    ? membership.organizations[0]
-    : membership?.organizations
-
-  const orgId = membership?.org_id ?? null
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? null
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+  const org = activeOrg?.org ?? null
 
   // Fetch team members + pending invites in parallel
   const admin = createAdminClient()

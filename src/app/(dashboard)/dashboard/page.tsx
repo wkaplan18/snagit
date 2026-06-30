@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
 
@@ -11,17 +12,11 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: orgMember } = await supabase
-    .from('org_members')
-    .select('org_id, role, organizations(id, name, logo_url, plan, org_type)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
+  const allOrgs = await getAllUserOrgs(user.id)
+  if (allOrgs.length === 0) redirect('/onboarding')
 
-  if (!orgMember) redirect('/onboarding')
-
-  const orgId = orgMember.org_id
+  const orgId = (await getActiveOrgId(user.id, allOrgs))!
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
 
   // Fetch projects first so we can query snags by project IDs
   const { data: projects } = await supabase
@@ -67,15 +62,12 @@ export default async function DashboardPage() {
 
   const totalRejected = (snagRows ?? []).filter(s => s.status === 'rejected').length
 
-  const org = Array.isArray(orgMember.organizations)
-    ? orgMember.organizations[0]
-    : orgMember.organizations as { name?: string; org_type?: string } | null
-  const orgType = (org?.org_type ?? 'builder') as OrgType
+  const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
   const terms = DASHBOARD_TERMS[orgType]
 
   return (
     <DashboardClient
-      orgName={org?.name ?? 'My Organisation'}
+      orgName={activeOrg?.org?.name ?? 'My Organisation'}
       terms={terms}
       projects={projects ?? []}
       projectStats={projectStats}
