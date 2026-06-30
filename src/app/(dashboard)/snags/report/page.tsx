@@ -31,6 +31,14 @@ export default async function SnagReportPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const allOrgs = await getAllUserOrgs(user.id)
+  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
+  const activeOrg = allOrgs.find(o => o.org_id === orgId)
+
+  // Get active org's project IDs to scope snags correctly
+  const { data: orgProjects } = await supabase.from('projects').select('id').eq('org_id', orgId)
+  const orgProjectIds = (orgProjects ?? []).map(p => p.id)
+
   let snagsQuery = supabase
     .from('snags')
     .select(`
@@ -41,7 +49,12 @@ export default async function SnagReportPage({
     `)
     .order('snag_number', { ascending: true })
 
-  if (projectId) snagsQuery = snagsQuery.eq('project_id', projectId)
+  if (projectId) {
+    snagsQuery = snagsQuery.eq('project_id', projectId)
+  } else if (orgProjectIds.length > 0) {
+    snagsQuery = snagsQuery.in('project_id', orgProjectIds)
+  }
+
   if (statusParam) {
     const statuses = statusParam.split(',')
     snagsQuery = statuses.length > 1
@@ -49,12 +62,8 @@ export default async function SnagReportPage({
       : snagsQuery.eq('status', statuses[0])
   }
 
-  const allOrgs = await getAllUserOrgs(user.id)
-  const orgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
-  const activeOrg = allOrgs.find(o => o.org_id === orgId)
-
   const [{ data: snags }, { data: project }] = await Promise.all([
-    snagsQuery,
+    orgProjectIds.length > 0 || projectId ? snagsQuery : Promise.resolve({ data: [] }),
     projectId
       ? supabase.from('projects').select('name').eq('id', projectId).single()
       : Promise.resolve({ data: null }),

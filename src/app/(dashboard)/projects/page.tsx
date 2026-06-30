@@ -16,10 +16,13 @@ export default async function ProjectsPage() {
   const activeOrg = allOrgs.find(o => o.org_id === orgId)
   const terms = DASHBOARD_TERMS[(activeOrg?.org?.org_type ?? 'builder') as OrgType]
 
-  const [{ data: projects }, { data: snagRows }] = await Promise.all([
-    supabase.from('projects').select('id, name, address, city, status, image_url').eq('org_id', orgId).order('updated_at', { ascending: false }),
-    supabase.from('snags').select('project_id, status'),
-  ])
+  const { data: projects } = await supabase
+    .from('projects').select('id, name, address, city, status, image_url').eq('org_id', orgId).order('updated_at', { ascending: false })
+
+  const projectIds = (projects ?? []).map(p => p.id)
+  const { data: snagRows } = projectIds.length > 0
+    ? await supabase.from('snags').select('project_id, status').in('project_id', projectIds)
+    : { data: [] }
 
   const ACTIVE = new Set(['open', 'assigned', 'rejected'])
   const countsByProject: Record<string, { active: number; review: number; approved: number }> = {}
