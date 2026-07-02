@@ -456,7 +456,7 @@ export default function LandingPage() {
               <div className="flex flex-1 flex-col p-7">
                 <div className="mb-6 flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>Portfolio</span>
-                  <span className="rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: 'rgba(26,86,219,0.3)', color: '#93B4FF', border: '1px solid rgba(26,86,219,0.4)' }}>Most popular</span>
+                  <span className="rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: 'rgba(26,86,219,0.3)', color: '#93B4FF', border: '1px solid rgba(26,86,219,0.4)' }}>Best value</span>
                 </div>
                 <div className="mb-2 flex items-end gap-1.5">
                   <span className="mb-1 text-lg font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>R</span>
