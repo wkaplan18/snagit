@@ -9,6 +9,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-display' })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://snagitapp.co.za'),
   title: 'SnagIT — Log it. Assign it. Fixed.',
   description: 'The fault-logging platform for construction sites, hotel teams, and property managers. Snag a fault in 30 seconds.',
   manifest: '/manifest.json',
