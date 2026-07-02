@@ -433,6 +433,7 @@ export default function LandingPage() {
                     'Photo before & after logging',
                     'Live dashboard & reports',
                     'Full audit trail',
+                    'Material ordering to office',
                   ].map(f => (
                     <li key={f} className="flex items-center gap-3 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
                       <CheckCircle className="h-4 w-4 shrink-0" style={{ color: '#22C55E' }} />
