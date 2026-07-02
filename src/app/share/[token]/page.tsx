@@ -36,7 +36,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       room:rooms(name)
     `)
     .eq('project_id', project.id)
-    .order('snag_number', { ascending: true })
+    .order('created_at', { ascending: false })
 
   const one = <T,>(v: T | T[] | null | undefined): T | null =>
     Array.isArray(v) ? (v[0] ?? null) : (v ?? null)
