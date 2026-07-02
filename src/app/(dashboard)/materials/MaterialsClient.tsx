@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Package, Clock, CheckCircle, ShoppingCart, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Plus, Package, Clock, CheckCircle, ShoppingCart, ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import type { MaterialRequest, MaterialRequestStatus } from '@/types'
 
 const STATUS_CONFIG: Record<MaterialRequestStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
@@ -15,7 +15,23 @@ export default function MaterialsClient({ initialRequests }: { initialRequests: 
   const [requests, setRequests] = useState(initialRequests)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [statusNote, setStatusNote] = useState('')
+
+  async function deleteRequest(id: string) {
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/materials/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setRequests(prev => prev.filter(r => r.id !== id))
+        setExpandedId(null)
+        setConfirmDeleteId(null)
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   async function updateStatus(id: string, status: MaterialRequestStatus) {
     setUpdatingId(id)
@@ -107,41 +123,69 @@ export default function MaterialsClient({ initialRequests }: { initialRequests: 
                           <p className="mt-1 text-xs text-slate-500 italic">&ldquo;{req.status_note}&rdquo;</p>
                         )}
                       </div>
-                      {nextStatus ? (
-                        isExpanded
-                          ? <ChevronUp className="h-4 w-4 flex-shrink-0 text-slate-300 mt-1" />
-                          : <ChevronDown className="h-4 w-4 flex-shrink-0 text-slate-300 mt-1" />
-                      ) : null}
+                      {isExpanded
+                        ? <ChevronUp className="h-4 w-4 flex-shrink-0 text-slate-300 mt-1" />
+                        : <ChevronDown className="h-4 w-4 flex-shrink-0 text-slate-300 mt-1" />
+                      }
                     </button>
 
-                    {isExpanded && nextStatus && (
+                    {isExpanded && (
                       <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
                         {req.notes && (
                           <p className="text-xs text-slate-500">
                             <span className="font-semibold">Notes:</span> {req.notes}
                           </p>
                         )}
-                        <input
-                          type="text"
-                          value={statusNote}
-                          onChange={e => setStatusNote(e.target.value)}
-                          placeholder={
-                            nextStatus === 'ordered'
-                              ? 'e.g. Ordered from Builders Warehouse'
-                              : 'e.g. Delivered to site office'
-                          }
-                          className="sf-input text-sm"
-                        />
-                        <button
-                          onClick={() => updateStatus(req.id, nextStatus)}
-                          disabled={updatingId === req.id}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A56DB] py-2.5 text-sm font-bold text-white disabled:opacity-60 active:scale-[0.98] transition-[transform,opacity]"
-                        >
-                          {updatingId === req.id
-                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Updating…</>
-                            : nextStatus === 'ordered' ? 'Mark as Ordered' : 'Mark as Fulfilled'
-                          }
-                        </button>
+                        {nextStatus && (
+                          <>
+                            <input
+                              type="text"
+                              value={statusNote}
+                              onChange={e => setStatusNote(e.target.value)}
+                              placeholder={
+                                nextStatus === 'ordered'
+                                  ? 'e.g. Ordered from Builders Warehouse'
+                                  : 'e.g. Delivered to site office'
+                              }
+                              className="sf-input text-sm"
+                            />
+                            <button
+                              onClick={() => updateStatus(req.id, nextStatus)}
+                              disabled={updatingId === req.id}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1A56DB] py-2.5 text-sm font-bold text-white disabled:opacity-60 active:scale-[0.98] transition-[transform,opacity]"
+                            >
+                              {updatingId === req.id
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Updating…</>
+                                : nextStatus === 'ordered' ? 'Mark as Ordered' : 'Mark as Fulfilled'
+                              }
+                            </button>
+                          </>
+                        )}
+                        {confirmDeleteId === req.id ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-600 active:scale-[0.98] transition-transform"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => deleteRequest(req.id)}
+                              disabled={deletingId === req.id}
+                              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-sm font-bold text-white disabled:opacity-60 active:scale-[0.98] transition-[transform,opacity]"
+                            >
+                              {deletingId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              {deletingId === req.id ? 'Deleting…' : 'Confirm Delete'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(req.id)}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-600 active:scale-[0.98] transition-transform"
+                          >
+                            <Trash2 className="h-4 w-4" /> Delete request
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
