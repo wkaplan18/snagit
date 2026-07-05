@@ -211,26 +211,26 @@ export interface OrphanUser {
   source: { type: 'invited'; orgName: string; expired: boolean } | { type: 'self_registered' }
 }
 
-function OrphanUserRow({ user, onDeleted }: { user: OrphanUser; onDeleted: () => void }) {
-  const [confirmText, setConfirmText] = useState('')
+function OrphanUserRow({ user, onDeleted }: { user: OrphanUser; onDeleted: (id: string) => void }) {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
   async function handleDelete() {
+    if (!confirm(`Delete ${user.email}? This cannot be undone.`)) return
     setDeleting(true)
     setError('')
     const res = await fetch(`/api/control-center/users/${user.id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confirmEmail: confirmText }),
+      body: JSON.stringify({ confirmEmail: user.email }),
     })
-    setDeleting(false)
     if (!res.ok) {
+      setDeleting(false)
       const body = await res.json().catch(() => ({}))
       setError(body.error ?? 'Failed to delete')
       return
     }
-    onDeleted()
+    onDeleted(user.id)
   }
 
   return (
@@ -249,29 +249,20 @@ function OrphanUserRow({ user, onDeleted }: { user: OrphanUser; onDeleted: () =>
       <td className="px-4 py-3 text-slate-500 text-xs">{user.confirmedAt ? 'Yes' : 'No'}</td>
       <td className="px-4 py-3 text-slate-500 text-xs">{user.lastSignInAt ? formatDate(user.lastSignInAt) : 'Never'}</td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <input
-            type="text"
-            value={confirmText}
-            onChange={e => setConfirmText(e.target.value)}
-            placeholder="type email"
-            className="text-xs rounded-md border border-red-300 px-1.5 py-1 w-32"
-          />
-          <button
-            onClick={handleDelete}
-            disabled={deleting || confirmText.trim().toLowerCase() !== user.email.toLowerCase()}
-            className="text-xs font-semibold text-white bg-red-600 rounded-md px-2 py-1 disabled:opacity-40"
-          >
-            {deleting ? '…' : 'Delete'}
-          </button>
-        </div>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="text-xs font-semibold text-white bg-red-600 rounded-md px-2 py-1 disabled:opacity-40"
+        >
+          {deleting ? '…' : 'Delete'}
+        </button>
         {error && <p className="text-xs text-red-700 mt-1">{error}</p>}
       </td>
     </tr>
   )
 }
 
-function OrphanUsersSection({ users, onChanged }: { users: OrphanUser[]; onChanged: () => void }) {
+function OrphanUsersSection({ users, onDeleted }: { users: OrphanUser[]; onDeleted: (id: string) => void }) {
   if (users.length === 0) return null
   return (
     <div className="space-y-2">
@@ -289,7 +280,7 @@ function OrphanUsersSection({ users, onChanged }: { users: OrphanUser[]; onChang
             </tr>
           </thead>
           <tbody>
-            {users.map(u => <OrphanUserRow key={u.id} user={u} onDeleted={onChanged} />)}
+            {users.map(u => <OrphanUserRow key={u.id} user={u} onDeleted={onDeleted} />)}
           </tbody>
         </table>
       </div>
@@ -301,6 +292,14 @@ export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs:
   const router = useRouter()
   const [sortKey, setSortKey] = useState<SortKey>('planStatus')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [removedUserIds, setRemovedUserIds] = useState<Set<string>>(new Set())
+
+  function handleUserDeleted(id: string) {
+    setRemovedUserIds(prev => new Set(prev).add(id))
+    router.refresh()
+  }
+
+  const visibleOrphanUsers = orphanUsers.filter(u => !removedUserIds.has(u.id))
 
   const sortedOrgs = useMemo(() => {
     const copy = [...orgs]
@@ -423,7 +422,7 @@ export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs:
         </table>
       </div>
 
-      <OrphanUsersSection users={orphanUsers} onChanged={() => router.refresh()} />
+      <OrphanUsersSection users={visibleOrphanUsers} onDeleted={handleUserDeleted} />
     </div>
   )
 }
