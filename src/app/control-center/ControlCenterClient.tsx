@@ -1,8 +1,15 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ORG_TYPE_CONFIG } from '@/types'
 import type { OrgType } from '@/types'
+
+export interface OrgMember {
+  email: string
+  name: string | null
+  role: string
+}
 
 export interface OrgRow {
   id: string
@@ -11,9 +18,11 @@ export interface OrgRow {
   plan: string
   planExpiresAt: string | null
   planStatus: 'expired' | 'expiring_soon' | 'active' | 'no_expiry'
+  isTrial: boolean
+  isInternalTest: boolean
   email: string | null
   createdAt: string
-  memberCount: number
+  members: OrgMember[]
   activeProjects: number
   totalProjects: number
   openSnags: number
@@ -26,6 +35,13 @@ interface Kpis {
   estimatedMrr: number
   expiringSoonCount: number
 }
+
+const PLAN_OPTIONS = [
+  { value: 'solo', label: 'Solo — R1,499/mo' },
+  { value: 'contractor', label: 'Contractor — R2,999/mo' },
+  { value: 'portfolio', label: 'Portfolio — R8,999/mo' },
+  { value: 'enterprise', label: 'Enterprise — custom' },
+]
 
 const PLAN_STATUS_CONFIG: Record<OrgRow['planStatus'], { label: string; className: string }> = {
   expired: { label: 'Expired', className: 'text-red-700 bg-red-50 border-red-200' },
@@ -52,6 +68,11 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return ''
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
 function KpiTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-3">
@@ -62,8 +83,79 @@ function KpiTile({ label, value, sub }: { label: string; value: string; sub?: st
   )
 }
 
+function OrgEditForm({ org, onSaved }: { org: OrgRow; onSaved: () => void }) {
+  const [plan, setPlan] = useState(org.plan)
+  const [expiresAt, setExpiresAt] = useState(toDateInputValue(org.planExpiresAt))
+  const [isTrial, setIsTrial] = useState(org.isTrial)
+  const [isInternalTest, setIsInternalTest] = useState(org.isInternalTest)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const planIsKnown = PLAN_OPTIONS.some(p => p.value === plan)
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/control-center/orgs/${org.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan,
+        plan_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+        is_trial: isTrial,
+        is_internal_test: isInternalTest,
+      }),
+    })
+    setSaving(false)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? 'Failed to save')
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 rounded-lg p-3">
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1">Plan</label>
+        <select value={planIsKnown ? plan : ''} onChange={e => setPlan(e.target.value)} className="w-full text-sm rounded-md border border-slate-200 px-2 py-1.5">
+          {!planIsKnown && <option value="">{plan} (unrecognized)</option>}
+          {PLAN_OPTIONS.map(p => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1">Plan expires</label>
+        <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} className="w-full text-sm rounded-md border border-slate-200 px-2 py-1.5" />
+      </div>
+      <label className="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" checked={isTrial} onChange={e => setIsTrial(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+        On trial (not yet paying)
+      </label>
+      <label className="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" checked={isInternalTest} onChange={e => setIsInternalTest(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+        Internal testing (exclude from KPIs)
+      </label>
+      {error && <p className="text-xs text-red-600 sm:col-span-2">{error}</p>}
+      <div className="sm:col-span-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="text-xs font-semibold text-white bg-slate-800 rounded-md px-3 py-1.5 disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ControlCenterClient({ orgs, kpis }: { orgs: OrgRow[]; kpis: Kpis }) {
+  const router = useRouter()
   const [sortKey, setSortKey] = useState<SortKey>('planStatus')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const sortedOrgs = useMemo(() => {
     const copy = [...orgs]
@@ -78,10 +170,10 @@ export default function ControlCenterClient({ orgs, kpis }: { orgs: OrgRow[]; kp
   return (
     <div className="px-4 py-4 space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiTile label="Total orgs" value={String(kpis.totalOrgs)} />
+        <KpiTile label="Total orgs" value={String(kpis.totalOrgs)} sub="excl. internal testing" />
         <KpiTile label="Active orgs" value={String(kpis.activeOrgs)} />
         <KpiTile label="Billable projects" value={String(kpis.totalActiveProjects)} sub="active projects/properties" />
-        <KpiTile label="Estimated MRR" value={formatCurrency(kpis.estimatedMrr)} sub="R1,499 × active projects" />
+        <KpiTile label="Estimated MRR" value={formatCurrency(kpis.estimatedMrr)} sub="paying orgs by plan" />
         <KpiTile label="Expiring soon" value={String(kpis.expiringSoonCount)} sub="within 14 days" />
       </div>
 
@@ -119,24 +211,61 @@ export default function ControlCenterClient({ orgs, kpis }: { orgs: OrgRow[]; kp
           <tbody>
             {sortedOrgs.map(org => {
               const status = PLAN_STATUS_CONFIG[org.planStatus]
+              const isExpanded = expandedId === org.id
               return (
-                <tr key={org.id} className="border-b border-slate-50 last:border-0">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-800">{org.name}</p>
-                    {org.email && <p className="text-xs text-slate-400">{org.email}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{ORG_TYPE_CONFIG[org.orgType]?.label ?? org.orgType}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${status.className}`}>
-                      {status.label}
-                    </span>
-                    <p className="text-xs text-slate-400 mt-0.5">{formatDate(org.planExpiresAt)}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{org.memberCount}</td>
-                  <td className="px-4 py-3 text-slate-600">{org.activeProjects} / {org.totalProjects}</td>
-                  <td className="px-4 py-3 text-slate-600">{org.openSnags}</td>
-                  <td className="px-4 py-3 text-slate-500">{formatDate(org.createdAt)}</td>
-                </tr>
+                <Fragment key={org.id}>
+                  <tr
+                    className="border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50"
+                    onClick={() => setExpandedId(isExpanded ? null : org.id)}
+                  >
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-slate-800 flex items-center gap-2">
+                        {org.name}
+                        {org.isInternalTest && (
+                          <span className="text-[10px] font-semibold uppercase text-purple-600 bg-purple-50 border border-purple-200 rounded-full px-1.5 py-0.5">Internal</span>
+                        )}
+                        {org.isTrial && !org.isInternalTest && (
+                          <span className="text-[10px] font-semibold uppercase text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-1.5 py-0.5">Trial</span>
+                        )}
+                      </p>
+                      {org.email && <p className="text-xs text-slate-400">{org.email}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{ORG_TYPE_CONFIG[org.orgType]?.label ?? org.orgType}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${status.className}`}>
+                        {status.label}
+                      </span>
+                      <p className="text-xs text-slate-400 mt-0.5">{org.plan} · {formatDate(org.planExpiresAt)}</p>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{org.members.length}</td>
+                    <td className="px-4 py-3 text-slate-600">{org.activeProjects} / {org.totalProjects}</td>
+                    <td className="px-4 py-3 text-slate-600">{org.openSnags}</td>
+                    <td className="px-4 py-3 text-slate-500">{formatDate(org.createdAt)}</td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="border-b border-slate-50 last:border-0 bg-slate-50/50">
+                      <td colSpan={7} className="px-4 py-4 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 mb-2">Members</p>
+                          {org.members.length === 0 ? (
+                            <p className="text-xs text-slate-400">No members</p>
+                          ) : (
+                            <ul className="space-y-1">
+                              {org.members.map((m, i) => (
+                                <li key={i} className="text-xs text-slate-600 flex items-center gap-2">
+                                  <span className="font-medium">{m.email}</span>
+                                  {m.name && <span className="text-slate-400">({m.name})</span>}
+                                  <span className="text-slate-400 uppercase text-[10px] bg-slate-100 rounded-full px-1.5 py-0.5">{m.role}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <OrgEditForm org={org} onSaved={() => router.refresh()} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               )
             })}
             {sortedOrgs.length === 0 && (

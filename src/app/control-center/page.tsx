@@ -1,21 +1,41 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import ControlCenterClient, { type OrgRow } from './ControlCenterClient'
 
-const PRICE_PER_ACTIVE_PROJECT = 1499
+const PRICE_BY_PLAN: Record<string, number | null> = {
+  solo: 1499,
+  contractor: 2999,
+  portfolio: 8999,
+  enterprise: null, // custom pricing — excluded from MRR auto-calc
+}
 
 export default async function ControlCenterPage() {
   const admin = createAdminClient()
 
-  const [{ data: orgs }, { data: members }, { data: projects }, { data: snags }] = await Promise.all([
-    admin.from('organizations').select('id, name, org_type, plan, plan_expires_at, email, created_at'),
-    admin.from('org_members').select('org_id'),
+  const [{ data: orgs }, { data: rawMembers }, { data: projects }, { data: snags }] = await Promise.all([
+    admin.from('organizations').select('id, name, org_type, plan, plan_expires_at, is_trial, is_internal_test, email, created_at'),
+    admin.from('org_members').select('org_id, user_id, role'),
     admin.from('projects').select('id, org_id, status'),
     admin.from('snags').select('id, status, project:projects(org_id)'),
   ])
 
-  const memberCounts = new Map<string, number>()
-  for (const m of members ?? []) {
-    memberCounts.set(m.org_id, (memberCounts.get(m.org_id) ?? 0) + 1)
+  // Resolve member emails/names once, then group by org
+  const memberIds = new Set((rawMembers ?? []).map(m => m.user_id))
+  let userMap = new Map<string, string>()
+  let profileMap = new Map<string, string | null>()
+  if (memberIds.size > 0) {
+    const [{ data: { users } }, { data: profiles }] = await Promise.all([
+      admin.auth.admin.listUsers({ perPage: 1000 }),
+      admin.from('profiles').select('id, full_name').in('id', Array.from(memberIds)),
+    ])
+    userMap = new Map(users.filter(u => memberIds.has(u.id)).map(u => [u.id, u.email ?? '']))
+    profileMap = new Map((profiles ?? []).map(p => [p.id, p.full_name]))
+  }
+
+  const membersByOrg = new Map<string, { email: string; name: string | null; role: string }[]>()
+  for (const m of rawMembers ?? []) {
+    const list = membersByOrg.get(m.org_id) ?? []
+    list.push({ email: userMap.get(m.user_id) ?? '', name: profileMap.get(m.user_id) ?? null, role: m.role })
+    membersByOrg.set(m.org_id, list)
   }
 
   const projectCounts = new Map<string, { active: number; total: number }>()
@@ -55,23 +75,26 @@ export default async function ControlCenterPage() {
       plan: o.plan,
       planExpiresAt: o.plan_expires_at,
       planStatus,
+      isTrial: o.is_trial,
+      isInternalTest: o.is_internal_test,
       email: o.email,
       createdAt: o.created_at,
-      memberCount: memberCounts.get(o.id) ?? 0,
+      members: membersByOrg.get(o.id) ?? [],
       activeProjects: projectCounts.get(o.id)?.active ?? 0,
       totalProjects: projectCounts.get(o.id)?.total ?? 0,
       openSnags: openSnagCounts.get(o.id) ?? 0,
     }
   })
 
-  const totalActiveProjects = orgRows.reduce((sum, o) => sum + o.activeProjects, 0)
+  const billableOrgs = orgRows.filter(o => !o.isInternalTest && !o.isTrial && o.planStatus !== 'expired')
+  const nonInternalOrgs = orgRows.filter(o => !o.isInternalTest)
 
   const kpis = {
-    totalOrgs: orgRows.length,
-    activeOrgs: orgRows.filter(o => o.planStatus === 'active' || o.planStatus === 'expiring_soon').length,
-    totalActiveProjects,
-    estimatedMrr: totalActiveProjects * PRICE_PER_ACTIVE_PROJECT,
-    expiringSoonCount: orgRows.filter(o => o.planStatus === 'expiring_soon').length,
+    totalOrgs: nonInternalOrgs.length,
+    activeOrgs: nonInternalOrgs.filter(o => o.planStatus === 'active' || o.planStatus === 'expiring_soon').length,
+    totalActiveProjects: nonInternalOrgs.reduce((sum, o) => sum + o.activeProjects, 0),
+    estimatedMrr: billableOrgs.reduce((sum, o) => sum + (PRICE_BY_PLAN[o.plan] ?? 0), 0),
+    expiringSoonCount: nonInternalOrgs.filter(o => o.planStatus === 'expiring_soon').length,
   }
 
   return <ControlCenterClient orgs={orgRows} kpis={kpis} />

@@ -56,6 +56,8 @@ export interface Organization {
   currency: string
   plan: string
   plan_expires_at: string | null
+  is_trial: boolean
+  is_internal_test: boolean
   created_at: string
   updated_at: string
 }
