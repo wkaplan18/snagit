@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import ControlCenterClient, { type OrgRow } from './ControlCenterClient'
+import ControlCenterClient, { type OrgRow, type OrphanUser } from './ControlCenterClient'
 
 const PRICE_BY_PLAN: Record<string, number | null> = {
   solo: 1499,
@@ -11,23 +11,21 @@ const PRICE_BY_PLAN: Record<string, number | null> = {
 export default async function ControlCenterPage() {
   const admin = createAdminClient()
 
-  const [{ data: orgs }, { data: rawMembers }, { data: projects }, { data: snags }] = await Promise.all([
+  const [{ data: orgs }, { data: rawMembers }, { data: projects }, { data: snags }, { data: { users } }, { data: invites }] = await Promise.all([
     admin.from('organizations').select('id, name, org_type, plan, plan_expires_at, is_trial, is_internal_test, email, created_at'),
     admin.from('org_members').select('org_id, user_id, role'),
     admin.from('projects').select('id, org_id, status'),
     admin.from('snags').select('id, status, project:projects(org_id)'),
+    admin.auth.admin.listUsers({ perPage: 1000 }),
+    admin.from('org_invites').select('email, accepted_at, expires_at, organizations(name)').is('accepted_at', null),
   ])
 
   // Resolve member emails/names once, then group by org
   const memberIds = new Set((rawMembers ?? []).map(m => m.user_id))
-  let userMap = new Map<string, string>()
+  const userMap = new Map(users.map(u => [u.id, u.email ?? '']))
   let profileMap = new Map<string, string | null>()
   if (memberIds.size > 0) {
-    const [{ data: { users } }, { data: profiles }] = await Promise.all([
-      admin.auth.admin.listUsers({ perPage: 1000 }),
-      admin.from('profiles').select('id, full_name').in('id', Array.from(memberIds)),
-    ])
-    userMap = new Map(users.filter(u => memberIds.has(u.id)).map(u => [u.id, u.email ?? '']))
+    const { data: profiles } = await admin.from('profiles').select('id, full_name').in('id', Array.from(memberIds))
     profileMap = new Map((profiles ?? []).map(p => [p.id, p.full_name]))
   }
 
@@ -97,5 +95,30 @@ export default async function ControlCenterPage() {
     expiringSoonCount: nonInternalOrgs.filter(o => o.planStatus === 'expiring_soon').length,
   }
 
-  return <ControlCenterClient orgs={orgRows} kpis={kpis} />
+  const pendingInviteByEmail = new Map<string, { orgName: string; expired: boolean }>()
+  for (const inv of invites ?? []) {
+    const org = Array.isArray(inv.organizations) ? inv.organizations[0] : inv.organizations
+    pendingInviteByEmail.set(inv.email.toLowerCase(), {
+      orgName: org?.name ?? 'Unknown org',
+      expired: new Date(inv.expires_at) < new Date(now),
+    })
+  }
+
+  const orphanUsers: OrphanUser[] = users
+    .filter(u => !memberIds.has(u.id))
+    .map(u => {
+      const invite = u.email ? pendingInviteByEmail.get(u.email.toLowerCase()) : undefined
+      return {
+        id: u.id,
+        email: u.email ?? '',
+        createdAt: u.created_at,
+        confirmedAt: u.confirmed_at ?? null,
+        lastSignInAt: u.last_sign_in_at ?? null,
+        source: invite
+          ? { type: 'invited' as const, orgName: invite.orgName, expired: invite.expired }
+          : { type: 'self_registered' as const },
+      }
+    })
+
+  return <ControlCenterClient orgs={orgRows} kpis={kpis} orphanUsers={orphanUsers} />
 }

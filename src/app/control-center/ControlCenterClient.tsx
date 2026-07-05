@@ -202,7 +202,102 @@ function DeleteOrgSection({ org, onDeleted }: { org: OrgRow; onDeleted: () => vo
   )
 }
 
-export default function ControlCenterClient({ orgs, kpis }: { orgs: OrgRow[]; kpis: Kpis }) {
+export interface OrphanUser {
+  id: string
+  email: string
+  createdAt: string
+  confirmedAt: string | null
+  lastSignInAt: string | null
+  source: { type: 'invited'; orgName: string; expired: boolean } | { type: 'self_registered' }
+}
+
+function OrphanUserRow({ user, onDeleted }: { user: OrphanUser; onDeleted: () => void }) {
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleDelete() {
+    setDeleting(true)
+    setError('')
+    const res = await fetch(`/api/control-center/users/${user.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmEmail: confirmText }),
+    })
+    setDeleting(false)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? 'Failed to delete')
+      return
+    }
+    onDeleted()
+  }
+
+  return (
+    <tr className="border-b border-slate-50 last:border-0">
+      <td className="px-4 py-3 text-slate-800 font-medium">{user.email}</td>
+      <td className="px-4 py-3">
+        {user.source.type === 'invited' ? (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${user.source.expired ? 'text-red-700 bg-red-50 border-red-200' : 'text-blue-700 bg-blue-50 border-blue-200'}`}>
+            Invited to {user.source.orgName}{user.source.expired ? ' (expired)' : ''}
+          </span>
+        ) : (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full border text-slate-500 bg-slate-50 border-slate-200">Self-registered</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(user.createdAt)}</td>
+      <td className="px-4 py-3 text-slate-500 text-xs">{user.confirmedAt ? 'Yes' : 'No'}</td>
+      <td className="px-4 py-3 text-slate-500 text-xs">{user.lastSignInAt ? formatDate(user.lastSignInAt) : 'Never'}</td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder="type email"
+            className="text-xs rounded-md border border-red-300 px-1.5 py-1 w-32"
+          />
+          <button
+            onClick={handleDelete}
+            disabled={deleting || confirmText.trim().toLowerCase() !== user.email.toLowerCase()}
+            className="text-xs font-semibold text-white bg-red-600 rounded-md px-2 py-1 disabled:opacity-40"
+          >
+            {deleting ? '…' : 'Delete'}
+          </button>
+        </div>
+        {error && <p className="text-xs text-red-700 mt-1">{error}</p>}
+      </td>
+    </tr>
+  )
+}
+
+function OrphanUsersSection({ users, onChanged }: { users: OrphanUser[]; onChanged: () => void }) {
+  if (users.length === 0) return null
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold text-slate-700">Users without an org ({users.length})</h2>
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+              <th className="px-4 py-2 font-medium">Email</th>
+              <th className="px-4 py-2 font-medium">Source</th>
+              <th className="px-4 py-2 font-medium">Signed up</th>
+              <th className="px-4 py-2 font-medium">Confirmed</th>
+              <th className="px-4 py-2 font-medium">Last sign-in</th>
+              <th className="px-4 py-2 font-medium">Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => <OrphanUserRow key={u.id} user={u} onDeleted={onChanged} />)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs: OrgRow[]; kpis: Kpis; orphanUsers: OrphanUser[] }) {
   const router = useRouter()
   const [sortKey, setSortKey] = useState<SortKey>('planStatus')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -327,6 +422,8 @@ export default function ControlCenterClient({ orgs, kpis }: { orgs: OrgRow[]; kp
           </tbody>
         </table>
       </div>
+
+      <OrphanUsersSection users={orphanUsers} onChanged={() => router.refresh()} />
     </div>
   )
 }
