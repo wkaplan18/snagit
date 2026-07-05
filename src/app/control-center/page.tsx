@@ -1,6 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import ControlCenterClient, { type OrgRow, type OrphanUser } from './ControlCenterClient'
 
+// The admin client's requests go through fetch() under the hood, which Next 14 caches by
+// default — without this, org/user data can be served stale after edits or deletes.
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 const PRICE_BY_PLAN: Record<string, number | null> = {
   solo: 1499,
   contractor: 2999,
