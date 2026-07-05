@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
+import { isPlatformOwner } from '@/lib/isPlatformOwner'
 import { DASHBOARD_TERMS } from '@/types'
 import type { OrgType } from '@/types'
 
@@ -13,7 +14,10 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   const allOrgs = await getAllUserOrgs(user.id)
-  if (allOrgs.length === 0) redirect('/onboarding')
+  if (allOrgs.length === 0) {
+    if (isPlatformOwner(user.email)) redirect('/control-center')
+    redirect('/onboarding')
+  }
 
   const orgId = (await getActiveOrgId(user.id, allOrgs))!
   const activeOrg = allOrgs.find(o => o.org_id === orgId)
