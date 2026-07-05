@@ -24,3 +24,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isPlatformOwner(user.email)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await params
+  const body = await request.json().catch(() => ({}))
+  const admin = createAdminClient()
+
+  const { data: org } = await admin.from('organizations').select('name').eq('id', id).single()
+  if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+  if (typeof body.confirmName !== 'string' || body.confirmName.trim() !== org.name) {
+    return NextResponse.json({ error: 'Confirmation name does not match' }, { status: 400 })
+  }
+
+  const { error } = await admin.from('organizations').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
