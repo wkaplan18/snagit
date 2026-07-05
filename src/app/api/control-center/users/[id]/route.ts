@@ -17,6 +17,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (fetchError || !targetUser?.user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const email = targetUser.user.email ?? ''
+  if (isPlatformOwner(email)) return NextResponse.json({ error: 'Cannot delete the platform owner account' }, { status: 400 })
   if (typeof body.confirmEmail !== 'string' || body.confirmEmail.trim().toLowerCase() !== email.toLowerCase()) {
     return NextResponse.json({ error: 'Confirmation email does not match' }, { status: 400 })
   }
