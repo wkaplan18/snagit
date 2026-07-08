@@ -8,7 +8,7 @@ interface PushPayload {
   tag?: string
 }
 
-export async function sendPushToOrgAdmins(orgId: string, payload: PushPayload) {
+export async function sendPushToOrgAdmins(orgId: string, payload: PushPayload, excludeUserId?: string) {
   const admin = createAdminClient()
 
   const { data: admins } = await admin
@@ -19,7 +19,8 @@ export async function sendPushToOrgAdmins(orgId: string, payload: PushPayload) {
 
   if (!admins?.length) return
 
-  const userIds = admins.map(a => a.user_id)
+  const userIds = admins.map(a => a.user_id).filter(id => id !== excludeUserId)
+  if (!userIds.length) return
 
   const [{ data: subs }, { count: badgeCount }] = await Promise.all([
     admin

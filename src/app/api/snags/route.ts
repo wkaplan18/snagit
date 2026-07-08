@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         body: data.title,
         url: `/snags/${data.id}`,
         tag: `snag-${data.id}`,
-      })
+      }, user.id)
     } catch (err) {
       console.error('[push] send failed', err)
     }
