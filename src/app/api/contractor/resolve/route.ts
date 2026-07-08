@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPushToOrgAdmins } from '@/lib/notifications/push'
 
 export async function POST(req: NextRequest) {
   // Contractors have no auth session — the access token below IS the auth,
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
   // Verify snag belongs to this contractor
   const { data: snag } = await supabase
     .from('snags')
-    .select('id, project_id')
+    .select('id, title, project_id, project:projects(org_id)')
     .eq('id', snagId)
     .eq('assigned_to', contractor.id)
     .single()
@@ -114,6 +115,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: `DB shows "${verify?.status}" after update — a trigger or policy is reverting the status`,
     }, { status: 500 })
+  }
+
+  const orgId = (snag as unknown as { project?: { org_id?: string } }).project?.org_id
+  if (orgId) {
+    try {
+      await sendPushToOrgAdmins(orgId, {
+        title: 'Snag needs review',
+        body: snag.title,
+        url: `/snags/${snagId}`,
+        tag: `snag-${snagId}`,
+      })
+    } catch (err) {
+      console.error('[push] send failed', err)
+    }
   }
 
   return NextResponse.json({ success: true })

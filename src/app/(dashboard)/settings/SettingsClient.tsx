@@ -7,6 +7,7 @@ import { ArrowLeft, User, Check, LogOut, Building2, Users, X, Send, Mail } from 
 import Link from 'next/link'
 import { DASHBOARD_TERMS, ORG_TYPE_CONFIG } from '@/types'
 import type { OrgType } from '@/types'
+import PushNotificationToggle from '@/components/settings/PushNotificationToggle'
 
 interface Member {
   user_id: string
@@ -40,6 +41,8 @@ function initials(name: string | null, email: string) {
 }
 
 export default function SettingsClient({ email, currentUserId, profile, orgName, orgEmail, orgType, orgId, members, pendingInvites }: Props) {
+  const myRole = members.find(m => m.user_id === currentUserId)?.role
+  const canManagePush = myRole === 'owner' || myRole === 'admin'
   const orgTypeConfig = orgType ? ORG_TYPE_CONFIG[orgType as OrgType] : null
   const terms = DASHBOARD_TERMS[(orgType ?? 'builder') as OrgType]
   const [fullName, setFullName] = useState(profile.full_name ?? '')
@@ -166,6 +169,8 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
           </div>
         </div>
       )}
+
+      {canManagePush && <PushNotificationToggle />}
 
       <form onSubmit={handleSave} className="sf-card space-y-4 p-5">
         <div>

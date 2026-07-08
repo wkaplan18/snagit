@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import BottomNav from '@/components/ui/BottomNav'
 import OrgSwitcher from '@/components/ui/OrgSwitcher'
+import AppBadgeSync from '@/components/ui/AppBadgeSync'
 import { getAllUserOrgs, getActiveOrgId } from '@/lib/activeOrg'
 import { isPlatformOwner } from '@/lib/isPlatformOwner'
 import { DASHBOARD_TERMS } from '@/types'
@@ -13,22 +14,31 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let terms = DASHBOARD_TERMS['builder']
   let fixedCount = 0
+  let badgeCount = 0
   let orgs: Awaited<ReturnType<typeof getAllUserOrgs>> = []
   let activeOrgId = ''
 
   if (user) {
-    const [allOrgs, { count }] = await Promise.all([
-      getAllUserOrgs(user.id),
-      supabase.from('snags').select('id', { count: 'exact', head: true }).eq('status', 'fixed'),
-    ])
-
+    const allOrgs = await getAllUserOrgs(user.id)
     orgs = allOrgs
     activeOrgId = (await getActiveOrgId(user.id, allOrgs)) ?? ''
 
     const activeOrg = allOrgs.find(o => o.org_id === activeOrgId)
     const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
     terms = DASHBOARD_TERMS[orgType]
-    fixedCount = count ?? 0
+
+    const [{ count: fixed }, { count: badge }] = await Promise.all([
+      supabase.from('snags').select('id', { count: 'exact', head: true }).eq('status', 'fixed'),
+      activeOrgId
+        ? supabase
+            .from('snags')
+            .select('id, project:projects!inner(org_id)', { count: 'exact', head: true })
+            .eq('project.org_id', activeOrgId)
+            .in('status', ['open', 'fixed'])
+        : Promise.resolve({ count: 0 }),
+    ])
+    fixedCount = fixed ?? 0
+    badgeCount = badge ?? 0
   }
 
   const activeOrg = orgs.find(o => o.org_id === activeOrgId)
@@ -52,6 +62,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       )}
       {children}
       <BottomNav terms={terms} fixedCount={fixedCount} orgType={orgType2} />
+      <AppBadgeSync count={badgeCount} />
     </div>
   )
 }

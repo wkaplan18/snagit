@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { sendPushToOrgAdmins } from '@/lib/notifications/push'
 
 const CreateSnagSchema = z.object({
   project_id: z.string().uuid(),
@@ -76,10 +77,24 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('snags')
     .insert(insertData)
-    .select(`*, attachments(*), contractor:contractors(id, name, company)`)
+    .select(`*, attachments(*), contractor:contractors(id, name, company), project:projects(id, name, org_id)`)
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const orgId = (data as unknown as { project?: { org_id?: string } }).project?.org_id
+  if (orgId) {
+    try {
+      await sendPushToOrgAdmins(orgId, {
+        title: 'New snag logged',
+        body: data.title,
+        url: `/snags/${data.id}`,
+        tag: `snag-${data.id}`,
+      })
+    } catch (err) {
+      console.error('[push] send failed', err)
+    }
+  }
 
   return NextResponse.json(data, { status: 201 })
 }
