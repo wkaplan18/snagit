@@ -635,7 +635,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
           />
         )}
 
-        <div className="flex flex-1 flex-col items-center justify-center px-6 gap-6">
+        <div className="flex flex-1 flex-col items-center px-6 pt-8 gap-6">
           {photoUrl ? (
             <div className="w-full max-w-sm">
               <div className="relative h-64 w-full overflow-hidden rounded-2xl">
@@ -659,6 +659,12 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
                   <Pencil className="h-3.5 w-3.5" /> Mark up photo
                 </button>
               </div>
+
+              <div className="mt-6">
+                <button onClick={() => setStep('details')} className="sf-btn-primary flex w-full items-center justify-center gap-2 py-4 text-base">
+                  Next <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex w-full max-w-sm flex-col gap-3">
@@ -671,22 +677,21 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
                 Choose from Library
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </label>
+
+              <div className="mt-3 space-y-2">
+                <button onClick={() => setStep('details')} className="sf-btn-primary flex w-full items-center justify-center gap-2 py-4 text-base">
+                  Next <ChevronRight className="h-5 w-5" />
+                </button>
+                <button onClick={() => setStep('details')} className="w-full py-2 text-sm text-slate-400 underline underline-offset-2">
+                  Skip photo
+                </button>
+              </div>
             </div>
           )}
         </div>
 
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-
-        <div className="px-4 pb-28 pt-4 space-y-2">
-          <button onClick={() => setStep('details')} className="sf-btn-primary flex w-full items-center justify-center gap-2 py-4 text-base">
-            Next <ChevronRight className="h-5 w-5" />
-          </button>
-          {!photoUrl && (
-            <button onClick={() => setStep('details')} className="w-full py-2 text-sm text-slate-400 underline underline-offset-2">
-              Skip photo
-            </button>
-          )}
-        </div>
+        <div className="pb-28" />
       </div>
     )
   }
@@ -707,7 +712,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
           </div>
         </div>
 
-        <div className="flex-1 px-6 pt-6 space-y-5">
+        <div className="px-6 pt-6 space-y-5">
           {photoUrl && (
             <div className="h-20 w-20 overflow-hidden rounded-xl border border-slate-100">
               <img src={photoUrl} alt="Job photo" className="h-full w-full object-cover" />
@@ -738,9 +743,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
               className="sf-input resize-none"
             />
           </div>
-        </div>
 
-        <div className="px-4 pb-28 pt-4">
           <button
             onClick={() => setStep('room')}
             disabled={!title.trim()}
@@ -749,6 +752,8 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
             Next <ChevronRight className="h-5 w-5" />
           </button>
         </div>
+
+        <div className="pb-28" />
       </div>
     )
   }
@@ -769,7 +774,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
           </div>
         </div>
 
-        <div className="flex-1 px-6 pt-6">
+        <div className="px-6 pt-6">
           <div className="flex flex-wrap gap-2">
             {rooms.map(r => (
               <button
@@ -815,16 +820,18 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
           {rooms.length === 0 && !addingRoom && (
             <p className="mt-4 text-sm text-slate-400">No rooms yet — add one above, or skip to save.</p>
           )}
+
+          <div className="mt-6 space-y-2">
+            <button onClick={saveJob} disabled={saving} className="sf-btn-primary w-full py-4 text-base disabled:opacity-50">
+              {saving ? <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</> : `Save ${terms.issue}`}
+            </button>
+            {!roomId && rooms.length > 0 && (
+              <p className="text-center text-xs text-slate-400">Room is optional</p>
+            )}
+          </div>
         </div>
 
-        <div className="px-4 pb-28 pt-4 space-y-2">
-          <button onClick={saveJob} disabled={saving} className="sf-btn-primary w-full py-4 text-base disabled:opacity-50">
-            {saving ? <><Loader2 className="h-5 w-5 animate-spin" /> Saving…</> : `Save ${terms.issue}`}
-          </button>
-          {!roomId && rooms.length > 0 && (
-            <p className="text-center text-xs text-slate-400">Room is optional</p>
-          )}
-        </div>
+        <div className="pb-28" />
       </div>
     )
   }
