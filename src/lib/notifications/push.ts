@@ -8,19 +8,10 @@ interface PushPayload {
   tag?: string
 }
 
-export async function sendPushToOrgAdmins(orgId: string, payload: PushPayload, excludeUserId?: string) {
-  const admin = createAdminClient()
-
-  const { data: admins } = await admin
-    .from('org_members')
-    .select('user_id')
-    .eq('org_id', orgId)
-    .in('role', ['owner', 'admin'])
-
-  if (!admins?.length) return
-
-  const userIds = admins.map(a => a.user_id).filter(id => id !== excludeUserId)
+async function sendPushToUserIds(userIds: string[], orgId: string, payload: PushPayload) {
   if (!userIds.length) return
+
+  const admin = createAdminClient()
 
   const [{ data: subs }, { count: badgeCount }] = await Promise.all([
     admin
@@ -60,4 +51,23 @@ export async function sendPushToOrgAdmins(orgId: string, payload: PushPayload, e
       }
     })
   )
+}
+
+export async function sendPushToOrgAdmins(orgId: string, payload: PushPayload, excludeUserId?: string) {
+  const admin = createAdminClient()
+
+  const { data: admins } = await admin
+    .from('org_members')
+    .select('user_id')
+    .eq('org_id', orgId)
+    .in('role', ['owner', 'admin'])
+
+  if (!admins?.length) return
+
+  const userIds = admins.map(a => a.user_id).filter(id => id !== excludeUserId)
+  await sendPushToUserIds(userIds, orgId, payload)
+}
+
+export async function sendPushToUser(userId: string, orgId: string, payload: PushPayload) {
+  await sendPushToUserIds([userId], orgId, payload)
 }

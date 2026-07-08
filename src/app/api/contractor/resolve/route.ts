@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendPushToOrgAdmins } from '@/lib/notifications/push'
+import { sendPushToUser } from '@/lib/notifications/push'
 
 export async function POST(req: NextRequest) {
   // Contractors have no auth session — the access token below IS the auth,
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   // Verify snag belongs to this contractor
   const { data: snag } = await supabase
     .from('snags')
-    .select('id, title, project_id, project:projects(org_id)')
+    .select('id, title, project_id, created_by, project:projects(org_id)')
     .eq('id', snagId)
     .eq('assigned_to', contractor.id)
     .single()
@@ -118,9 +118,9 @@ export async function POST(req: NextRequest) {
   }
 
   const orgId = (snag as unknown as { project?: { org_id?: string } }).project?.org_id
-  if (orgId) {
+  if (orgId && snag.created_by) {
     try {
-      await sendPushToOrgAdmins(orgId, {
+      await sendPushToUser(snag.created_by, orgId, {
         title: 'Snag needs review',
         body: snag.title,
         url: `/snags/${snagId}`,
