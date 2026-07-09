@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { Camera, CheckCircle, Clock, AlertTriangle, Loader2, ChevronDown, ChevronUp, RefreshCw, X } from 'lucide-react'
 import { compressImage } from '@/lib/compressImage'
 
@@ -127,7 +128,7 @@ function SnagCard({
                 onClick={() => onViewPhoto(problemPhoto.public_url)}
                 className="block h-48 w-full overflow-hidden rounded-xl active:scale-[0.98] transition-transform"
               >
-                <img src={problemPhoto.public_url} alt="Problem" className="h-full w-full object-cover" />
+                <Image src={problemPhoto.public_url} alt="Problem" width={800} height={384} className="h-full w-full object-cover" />
               </button>
             </div>
           )}
@@ -139,7 +140,7 @@ function SnagCard({
                 onClick={() => onViewPhoto(fixPhoto.public_url)}
                 className="block h-48 w-full overflow-hidden rounded-xl border-2 border-teal-200 active:scale-[0.98] transition-transform"
               >
-                <img src={fixPhoto.public_url} alt="Fix" className="h-full w-full object-cover" />
+                <Image src={fixPhoto.public_url} alt="Fix" width={800} height={384} className="h-full w-full object-cover" />
               </button>
             </div>
           )}

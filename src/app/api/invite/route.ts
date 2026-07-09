@@ -18,12 +18,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Valid email required' }, { status: 400 })
   }
 
+  // Never allow inviting an owner; the owner role is set at org creation only
+  const INVITABLE_ROLES = ['admin', 'manager', 'inspector', 'viewer']
+  if (!INVITABLE_ROLES.includes(role)) {
+    return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+  }
+
   // Get the user's active org
   const allOrgs = await getAllUserOrgs(user.id)
   const orgId = await getActiveOrgId(user.id, allOrgs)
   if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
   const activeOrg = allOrgs.find(o => o.org_id === orgId)
+  if (activeOrg?.role !== 'owner' && activeOrg?.role !== 'admin') {
+    return NextResponse.json({ error: 'Only owners and admins can invite team members' }, { status: 403 })
+  }
   const orgName = activeOrg?.org?.name ?? 'Your team'
 
   // Don't invite someone already in the org
@@ -121,6 +130,10 @@ export async function DELETE(req: NextRequest) {
   const allOrgs = await getAllUserOrgs(user.id)
   const orgId = await getActiveOrgId(user.id, allOrgs)
   if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const callerRole = allOrgs.find(o => o.org_id === orgId)?.role
+  if (callerRole !== 'owner' && callerRole !== 'admin') {
+    return NextResponse.json({ error: 'Only owners and admins can cancel invites' }, { status: 403 })
+  }
   const membership = { org_id: orgId }
 
   const { id } = await req.json()

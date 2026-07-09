@@ -179,6 +179,7 @@ export default function DashboardClient({ orgName, terms, projects, projectStats
                 <Link key={p.id} href={`/projects/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
                   <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-slate-100 overflow-hidden">
                     {p.image_url ? (
+                      // image_url can be any host (set manually, not by the app) — next/image would throw on non-whitelisted domains
                       <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-slate-400">

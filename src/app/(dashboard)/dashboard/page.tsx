@@ -36,7 +36,9 @@ export default async function DashboardPage() {
     projectIds.length > 0
       ? supabase.from('snags').select('project_id, status').in('project_id', projectIds)
       : Promise.resolve({ data: [] as { project_id: string; status: string }[], error: null }),
-    supabase.from('snags').select('id', { count: 'exact', head: true }).eq('status', 'fixed'),
+    projectIds.length > 0
+      ? supabase.from('snags').select('id', { count: 'exact', head: true }).in('project_id', projectIds).eq('status', 'fixed')
+      : Promise.resolve({ count: 0 }),
   ])
 
   // Compute per-project stats using the same ACTIVE_STATUSES as the rest of the app

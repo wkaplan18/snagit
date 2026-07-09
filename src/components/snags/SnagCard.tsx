@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Camera, User } from 'lucide-react'
 import type { Snag } from '@/types'
 import { STATUS_CONFIG } from '@/types'
@@ -41,7 +42,7 @@ export default function SnagCard({ snag }: { snag: Snag }) {
         {/* Photo */}
         <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
           {coverPhoto ? (
-            <img src={coverPhoto.public_url} alt={snag.title} className="h-full w-full object-cover" />
+            <Image src={coverPhoto.public_url} alt={snag.title} width={112} height={112} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <Camera className="h-5 w-5 text-slate-300" />

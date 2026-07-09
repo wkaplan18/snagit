@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, BookUser, Camera, ChevronRight, Loader2, MapPin, MessageCircle, Pencil, Plus, User, CalendarClock, X } from 'lucide-react'
 import { waLink } from '@/lib/whatsappLink'
 import { compressImage } from '@/lib/compressImage'
@@ -335,7 +336,7 @@ export default function SnagDetailClient({ snag, contractors, terms, orgId, room
               onClick={() => setViewingPhoto(p.public_url)}
               className="block overflow-hidden rounded-2xl border border-slate-200 active:scale-[0.97] transition-transform"
             >
-              <img src={p.public_url} alt={snag.title} className="aspect-square w-full object-cover" />
+              <Image src={p.public_url} alt={snag.title} width={600} height={600} className="aspect-square w-full object-cover" />
             </button>
           ))}
         </div>
@@ -362,7 +363,7 @@ export default function SnagDetailClient({ snag, contractors, terms, orgId, room
                 onClick={() => setViewingPhoto(p.public_url)}
                 className="block overflow-hidden rounded-2xl border border-green-200 active:scale-[0.97] transition-transform"
               >
-                <img src={p.public_url} alt="Resolution" className="aspect-square w-full object-cover" />
+                <Image src={p.public_url} alt="Resolution" width={600} height={600} className="aspect-square w-full object-cover" />
               </button>
             ))}
           </div>

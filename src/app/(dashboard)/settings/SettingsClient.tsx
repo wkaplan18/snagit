@@ -43,6 +43,7 @@ function initials(name: string | null, email: string) {
 export default function SettingsClient({ email, currentUserId, profile, orgName, orgEmail, orgType, orgId, members, pendingInvites }: Props) {
   const myRole = members.find(m => m.user_id === currentUserId)?.role
   const canManagePush = myRole === 'owner' || myRole === 'admin'
+  const canManageTeam = canManagePush
   const orgTypeConfig = orgType ? ORG_TYPE_CONFIG[orgType as OrgType] : null
   const terms = DASHBOARD_TERMS[(orgType ?? 'builder') as OrgType]
   const [fullName, setFullName] = useState(profile.full_name ?? '')
@@ -278,7 +279,7 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
                   </span>
                   {m.user_id === currentUserId ? (
                     <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">You</span>
-                  ) : (
+                  ) : canManageTeam && m.role !== 'owner' && (
                     <button
                       onClick={() => removeMember(m.user_id, m.email)}
                       disabled={removingId === m.user_id}
@@ -306,19 +307,22 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
                     <p className="text-sm text-slate-700 truncate">{inv.email}</p>
                     <p className="text-[10px] text-slate-400">Invite sent · awaiting acceptance</p>
                   </div>
-                  <button
-                    onClick={() => cancelInvite(inv.id, inv.email)}
-                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                    title="Cancel invite"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  {canManageTeam && (
+                    <button
+                      onClick={() => cancelInvite(inv.id, inv.email)}
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      title="Cancel invite"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
           {/* Invite form */}
+          {canManageTeam && (
           <form onSubmit={handleInvite} className="sf-card p-4">
             <p className="mb-3 text-sm font-semibold text-slate-900">Invite someone to your team</p>
             <p className="mb-3 text-xs text-slate-500">
@@ -345,6 +349,7 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
             {inviteError && <p className="mt-2 text-xs text-red-600">{inviteError}</p>}
             {inviteSuccess && <p className="mt-2 text-xs text-green-700">{inviteSuccess}</p>}
           </form>
+          )}
         </div>
       )}
 
