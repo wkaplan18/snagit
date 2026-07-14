@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   }
 
   const reference = `SNAG-sub-${orgId.slice(0, 8)}-${planId}-${Date.now()}`
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://snagitapp.co.za'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.snagitapp.co.za'
   const callbackUrl = `${appUrl}/api/paystack/subscription-callback?ref=${reference}`
 
   // Store pending reference on org

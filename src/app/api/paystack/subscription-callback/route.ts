@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(req: NextRequest) {
   const ref = req.nextUrl.searchParams.get('ref') ?? req.nextUrl.searchParams.get('trxref') ?? req.nextUrl.searchParams.get('reference')
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://snagitapp.co.za'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.snagitapp.co.za'
 
   if (!ref) return NextResponse.redirect(`${appUrl}/settings/billing?payment=failed`)
 
