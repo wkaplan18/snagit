@@ -40,7 +40,7 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
       .single()
 
     if (projectError || !data) {
-      setError(projectError?.message ?? 'Could not create the project')
+      setError(projectError?.message ?? `Could not create the ${terms.project.toLowerCase()}`)
       setLoading(false)
       return
     }
@@ -136,7 +136,16 @@ export default function NewProjectClient({ orgId, terms, orgType }: { orgId: str
           </div>
         )}
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-xs text-amber-800">{error}</p>
+            {error.startsWith('Plan limit reached') && (
+              <Link href="/settings/billing" className="mt-1.5 inline-block text-xs font-semibold text-[#1A56DB] hover:underline">
+                Upgrade your plan →
+              </Link>
+            )}
+          </div>
+        )}
 
         <button type="submit" disabled={loading || name.trim().length < 2} className="sf-btn-primary w-full disabled:opacity-60">
           {loading ? 'Creating…' : `Create ${terms.project.toLowerCase()}`}
