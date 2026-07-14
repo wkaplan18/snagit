@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { LayoutDashboard, Building2, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/DashboardClient'
@@ -8,6 +10,37 @@ import type { OrgType } from '@/types'
 
 const ACTIVE = new Set(['open', 'assigned', 'rejected'])
 
+function PlatformOwnerChooser() {
+  return (
+    <div className="mx-auto max-w-md px-4 py-16">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Welcome back</p>
+      <h1 className="text-2xl font-bold text-slate-900 mb-6">Where do you want to go?</h1>
+      <div className="space-y-3">
+        <Link href="/control-center" className="sf-card flex items-center gap-3 p-4 hover:border-slate-300 transition-colors">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 shrink-0">
+            <LayoutDashboard className="h-5 w-5 text-slate-700" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-800">Control Center</p>
+            <p className="text-xs text-slate-500">Manage organizations, billing and users</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-slate-300 shrink-0" />
+        </Link>
+        <Link href="/onboarding" className="sf-card flex items-center gap-3 p-4 hover:border-slate-300 transition-colors">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF] shrink-0">
+            <Building2 className="h-5 w-5 text-[#1A56DB]" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-800">Set up my own workspace</p>
+            <p className="text-xs text-slate-500">Create a SnagIT organisation for yourself</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-slate-300 shrink-0" />
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,7 +48,7 @@ export default async function DashboardPage() {
 
   const allOrgs = await getAllUserOrgs(user.id)
   if (allOrgs.length === 0) {
-    if (isPlatformOwner(user.email)) redirect('/control-center')
+    if (isPlatformOwner(user.email)) return <PlatformOwnerChooser />
     redirect('/onboarding')
   }
 
