@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Camera, Loader2, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Camera, Loader2, CheckCircle2, AlertTriangle, Scale } from 'lucide-react'
 import { compressImage } from '@/lib/compressImage'
 import SignaturePad from '@/components/inspections/SignaturePad'
 import { CONDITION_CONFIG, type Inspection, type InspectionItem, type InspectionStatus, type ItemCondition, type Tenant, type Attachment } from '@/types'
@@ -37,6 +37,7 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
   const [inspectorSigUrl, setInspectorSigUrl] = useState(inspection.inspector_signature_url)
   const [savingSig, setSavingSig] = useState<'tenant' | 'inspector' | null>(null)
   const [completing, setCompleting] = useState(false)
+  const [convertingItemId, setConvertingItemId] = useState<string | null>(null)
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const readOnly = status !== 'draft'
@@ -102,6 +103,22 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
     }
   }
 
+  async function convertToSnag(itemId: string) {
+    if (!confirm('Log this as a maintenance snag? A new issue will be created for this item.')) return
+    setConvertingItemId(itemId)
+    try {
+      const res = await fetch(`/api/inspections/${inspection.id}/items/${itemId}/convert-to-snag`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setItems(prev => prev.map(i => i.id === itemId ? { ...i, converted_snag_id: data.converted_snag_id, attachments: data.attachments } : i))
+      } else {
+        alert(data.error ?? 'Could not convert to a snag.')
+      }
+    } finally {
+      setConvertingItemId(null)
+    }
+  }
+
   async function completeInspection() {
     setCompleting(true)
     try {
@@ -126,13 +143,23 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
         <ArrowLeft className="h-4 w-4" /> {inspection.unit?.name ?? 'Back'}
       </Link>
 
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">
-          {inspection.type === 'move_in' ? 'Move-in' : 'Move-out'} inspection
-        </h1>
-        <p className="text-xs text-slate-400">
-          {inspection.tenant?.full_name ?? '—'} · {status === 'completed' ? 'Completed' : status === 'submitted' ? 'Submitted' : 'In progress'}
-        </p>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">
+            {inspection.type === 'move_in' ? 'Move-in' : 'Move-out'} inspection
+          </h1>
+          <p className="text-xs text-slate-400">
+            {inspection.tenant?.full_name ?? '—'} · {status === 'completed' ? 'Completed' : status === 'submitted' ? 'Submitted' : 'In progress'}
+          </p>
+        </div>
+        {inspection.type === 'move_out' && inspection.linked_move_in_inspection_id && (
+          <Link
+            href={`/inspections/${inspection.id}/compare`}
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+          >
+            <Scale className="h-3.5 w-3.5" /> Compare
+          </Link>
+        )}
       </div>
 
       <div className="space-y-5">
@@ -202,6 +229,28 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
                         </>
                       )}
                     </div>
+
+                    {(item.condition === 'damaged' || item.condition === 'missing') && (
+                      item.converted_snag_id ? (
+                        <Link
+                          href={`/snags/${item.converted_snag_id}`}
+                          className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A56DB] hover:underline"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" /> View snag
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => convertToSnag(item.id)}
+                          disabled={convertingItemId === item.id}
+                          className="mt-2 flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          {convertingItemId === item.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <AlertTriangle className="h-3.5 w-3.5" />}
+                          Log as maintenance snag
+                        </button>
+                      )
+                    )}
                   </div>
                 )
               })}
