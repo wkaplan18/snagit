@@ -156,13 +156,6 @@ export default function SnagDetailClient({ snag, contractors, terms, orgId, room
     if (s === 'fixed') fields.fixed_at = new Date().toISOString()
     if (s === 'closed') fields.closed_at = new Date().toISOString()
     await update(fields)
-    if (s === 'rejected') {
-      fetch('/api/notifications/whatsapp/rejected', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ snagId: snag.id }),
-      }).catch(() => {})
-    }
   }
 
   async function handleDelete() {
@@ -434,10 +427,16 @@ export default function SnagDetailClient({ snag, contractors, terms, orgId, room
                 <a
                   href={waLink(
                     localContractor.whatsapp,
-                    `Hi ${localContractor.name}, you've been assigned ${terms.issue.toLowerCase()} #${snag.snag_number} (${snag.title})` +
-                      `${snag.project ? ` on ${snag.project.name}` : ''}` +
-                      `${snag.unit ? ` — ${snag.unit.name}${snag.room ? `, ${snag.room.name}` : ''}` : ''}.` +
-                      `\nView it and upload your fix photo here:\n${origin}/c/${localContractor.access_token}?t=${Date.now()}`
+                    isRejected
+                      ? `Hi ${localContractor.name}, your fix for ${terms.issue.toLowerCase()} #${snag.snag_number} (${snag.title})` +
+                        `${snag.project ? ` on ${snag.project.name}` : ''}` +
+                        `${snag.unit ? ` — ${snag.unit.name}${snag.room ? `, ${snag.room.name}` : ''}` : ''}` +
+                        ` was rejected and needs to be redone.` +
+                        `\nView it here:\n${origin}/c/${localContractor.access_token}?t=${Date.now()}`
+                      : `Hi ${localContractor.name}, you've been assigned ${terms.issue.toLowerCase()} #${snag.snag_number} (${snag.title})` +
+                        `${snag.project ? ` on ${snag.project.name}` : ''}` +
+                        `${snag.unit ? ` — ${snag.unit.name}${snag.room ? `, ${snag.room.name}` : ''}` : ''}.` +
+                        `\nView it and upload your fix photo here:\n${origin}/c/${localContractor.access_token}?t=${Date.now()}`
                   )}
                   target="_blank"
                   rel="noopener"
