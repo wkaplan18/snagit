@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { isPlatformOwner } from '@/lib/isPlatformOwner'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import ControlCenterSidebar from './ControlCenterSidebar'
+import { getControlCenterData } from './data'
+
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
 
 export default async function ControlCenterLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -10,15 +14,18 @@ export default async function ControlCenterLayout({ children }: { children: Reac
   if (!user) redirect('/login')
   if (!isPlatformOwner(user.email)) redirect('/dashboard')
 
+  // Cached via React cache() — this and each section page share one fetch per request
+  const { kpis, orphanUsers, orgs } = await getControlCenterData()
+  const pendingInvites = orgs.reduce((sum, o) => sum + o.pendingInvites.length, 0)
+
   return (
-    <div className="min-h-screen bg-slate-50 pt-safe">
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-sm font-semibold text-slate-800">SnagIT Control Center</h1>
-        <Link href="/dashboard" className="text-xs text-slate-400 hover:text-slate-600">
-          Back to app
-        </Link>
-      </header>
-      {children}
+    <div className="md:flex md:min-h-screen bg-slate-50 pt-safe">
+      <ControlCenterSidebar
+        needsAttentionCount={kpis.needsAttentionCount}
+        orgCount={kpis.totalOrgs}
+        peopleCount={orphanUsers.length + pendingInvites}
+      />
+      <main className="flex-1 min-w-0">{children}</main>
     </div>
   )
 }

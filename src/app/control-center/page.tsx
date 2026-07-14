@@ -1,192 +1,80 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import ControlCenterClient, { type OrgRow, type OrphanUser } from './ControlCenterClient'
+import Link from 'next/link'
+import { AlertTriangle, ArrowRight, TrendingUp } from 'lucide-react'
+import { getControlCenterData } from './data'
+import { attentionReason, formatCurrency, formatDate } from './lib'
+import KpiTile from './components/KpiTile'
+import { ORG_TYPE_CONFIG } from '@/types'
 
-// The admin client's requests go through fetch() under the hood, which Next 14 caches by
-// default — without this, org/user data can be served stale after edits or deletes.
-export const dynamic = 'force-dynamic'
-export const fetchCache = 'force-no-store'
+export default async function OverviewPage() {
+  const { orgs, kpis, needsAttentionOrgs } = await getControlCenterData()
 
-const PRICE_BY_PLAN: Record<string, number | null> = {
-  solo: 1499,
-  contractor: 2999,
-  portfolio: 8999,
-  enterprise: null, // custom pricing — excluded from MRR auto-calc
-}
+  const recentOrgs = [...orgs]
+    .filter(o => !o.isInternalTest)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6)
 
-interface PaystackSub {
-  status: string
-  nextPaymentDate: string | null
-}
+  return (
+    <div className="px-4 py-6 md:px-8 md:py-8 space-y-6 max-w-5xl">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#1A56DB]">Overview</p>
+        <h1 className="text-2xl font-bold text-slate-900 mt-1">Welcome back</h1>
+        <p className="text-sm text-slate-500 mt-1">Here's how SnagIT is doing right now.</p>
+      </div>
 
-// Live subscription state from Paystack, keyed by subscription_code
-async function fetchPaystackSubs(): Promise<Map<string, PaystackSub>> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY
-  const map = new Map<string, PaystackSub>()
-  if (!secretKey) return map
-  try {
-    const res = await fetch('https://api.paystack.co/subscription?perPage=100', {
-      headers: { Authorization: `Bearer ${secretKey}` },
-      signal: AbortSignal.timeout(8000),
-    })
-    const json = await res.json()
-    for (const s of json?.data ?? []) {
-      if (s.subscription_code) {
-        map.set(s.subscription_code, {
-          status: s.status,
-          nextPaymentDate: s.next_payment_date ?? null,
-        })
-      }
-    }
-  } catch {
-    // Paystack unreachable — dashboard degrades to DB-only data
-  }
-  return map
-}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiTile accent="blue" label="Monthly recurring revenue" value={formatCurrency(kpis.mrr)} sub={`${kpis.payingViaPaystack + kpis.payingManually} paying orgs`} />
+        <KpiTile accent="slate" label="Total organizations" value={String(kpis.totalOrgs)} sub="excl. internal testing" />
+        <KpiTile accent="emerald" label="Billable projects" value={String(kpis.totalActiveProjects)} sub="active properties" />
+        <KpiTile accent="amber" label="Needs attention" value={String(kpis.needsAttentionCount)} sub="billing issues & trials" />
+      </div>
 
-export default async function ControlCenterPage() {
-  const admin = createAdminClient()
+      {needsAttentionOrgs.length > 0 && (
+        <div className="bg-white border border-amber-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 bg-amber-50 px-4 py-3 border-b border-amber-100">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <p className="text-sm font-semibold text-amber-800">Needs attention ({needsAttentionOrgs.length})</p>
+          </div>
+          <ul className="divide-y divide-slate-50">
+            {needsAttentionOrgs.map(org => (
+              <li key={org.id}>
+                <Link
+                  href={`/control-center/organizations?highlight=${org.id}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{org.name}</p>
+                    <p className="text-xs text-amber-600 mt-0.5">{attentionReason(org)}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-slate-300 shrink-0" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-  const [{ data: orgs }, { data: rawMembers }, { data: projects }, { data: snags }, { data: { users } }, { data: invites }, paystackSubs] = await Promise.all([
-    admin.from('organizations').select('id, name, org_type, plan, plan_expires_at, is_trial, is_internal_test, email, created_at, subscription_status, paystack_subscription_code, paystack_customer_code'),
-    admin.from('org_members').select('org_id, user_id, role'),
-    admin.from('projects').select('id, org_id, status'),
-    admin.from('snags').select('id, status, project:projects(org_id)'),
-    admin.auth.admin.listUsers({ perPage: 1000 }),
-    admin.from('org_invites').select('id, org_id, email, role, accepted_at, expires_at, organizations(name)').is('accepted_at', null),
-    fetchPaystackSubs(),
-  ])
-
-  // Resolve member emails/names once, then group by org
-  const memberIds = new Set((rawMembers ?? []).map(m => m.user_id))
-  const userMap = new Map(users.map(u => [u.id, u.email ?? '']))
-  let profileMap = new Map<string, string | null>()
-  if (memberIds.size > 0) {
-    const { data: profiles } = await admin.from('profiles').select('id, full_name').in('id', Array.from(memberIds))
-    profileMap = new Map((profiles ?? []).map(p => [p.id, p.full_name]))
-  }
-
-  const membersByOrg = new Map<string, { userId: string; email: string; name: string | null; role: string }[]>()
-  for (const m of rawMembers ?? []) {
-    const list = membersByOrg.get(m.org_id) ?? []
-    list.push({ userId: m.user_id, email: userMap.get(m.user_id) ?? '', name: profileMap.get(m.user_id) ?? null, role: m.role })
-    membersByOrg.set(m.org_id, list)
-  }
-
-  const invitesByOrg = new Map<string, { id: string; email: string; role: string; expiresAt: string; expired: boolean }[]>()
-  for (const inv of invites ?? []) {
-    const list = invitesByOrg.get(inv.org_id) ?? []
-    list.push({
-      id: inv.id,
-      email: inv.email,
-      role: inv.role,
-      expiresAt: inv.expires_at,
-      expired: new Date(inv.expires_at) < new Date(),
-    })
-    invitesByOrg.set(inv.org_id, list)
-  }
-
-  const projectCounts = new Map<string, { active: number; total: number }>()
-  for (const p of projects ?? []) {
-    const c = projectCounts.get(p.org_id) ?? { active: 0, total: 0 }
-    c.total++
-    if (p.status === 'active') c.active++
-    projectCounts.set(p.org_id, c)
-  }
-
-  const openSnagCounts = new Map<string, number>()
-  const ACTIVE_SNAG_STATUSES = new Set(['open', 'assigned', 'in_progress'])
-  for (const s of snags ?? []) {
-    const project = Array.isArray(s.project) ? s.project[0] : s.project
-    const orgId = project?.org_id
-    if (orgId && ACTIVE_SNAG_STATUSES.has(s.status)) {
-      openSnagCounts.set(orgId, (openSnagCounts.get(orgId) ?? 0) + 1)
-    }
-  }
-
-  const now = Date.now()
-  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000
-
-  const orgRows: OrgRow[] = (orgs ?? []).map(o => {
-    const expiresAt = o.plan_expires_at ? new Date(o.plan_expires_at).getTime() : null
-    let planStatus: OrgRow['planStatus'] = 'no_expiry'
-    if (expiresAt !== null) {
-      if (expiresAt < now) planStatus = 'expired'
-      else if (expiresAt - now <= FOURTEEN_DAYS_MS) planStatus = 'expiring_soon'
-      else planStatus = 'active'
-    }
-
-    const liveSub = o.paystack_subscription_code ? paystackSubs.get(o.paystack_subscription_code) : undefined
-
-    return {
-      id: o.id,
-      name: o.name,
-      orgType: o.org_type,
-      plan: o.plan,
-      planExpiresAt: o.plan_expires_at,
-      planStatus,
-      isTrial: o.is_trial,
-      isInternalTest: o.is_internal_test,
-      email: o.email,
-      createdAt: o.created_at,
-      subscriptionStatus: o.subscription_status ?? 'none',
-      hasPaystackSub: !!o.paystack_subscription_code,
-      hasPaystackCustomer: !!o.paystack_customer_code,
-      nextPaymentDate: liveSub?.nextPaymentDate ?? null,
-      members: membersByOrg.get(o.id) ?? [],
-      pendingInvites: invitesByOrg.get(o.id) ?? [],
-      activeProjects: projectCounts.get(o.id)?.active ?? 0,
-      totalProjects: projectCounts.get(o.id)?.total ?? 0,
-      openSnags: openSnagCounts.get(o.id) ?? 0,
-    }
-  })
-
-  const nonInternalOrgs = orgRows.filter(o => !o.isInternalTest)
-  const paystackPaying = nonInternalOrgs.filter(o => o.subscriptionStatus === 'active')
-  // Manually-managed paying orgs (EFT / enterprise) — billed outside Paystack
-  const manualPaying = nonInternalOrgs.filter(o =>
-    o.subscriptionStatus === 'none' && !o.isTrial && o.planStatus !== 'expired'
+      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+          <TrendingUp className="h-4 w-4 text-slate-400" />
+          <p className="text-sm font-semibold text-slate-700">Recent signups</p>
+        </div>
+        <ul className="divide-y divide-slate-50">
+          {recentOrgs.map(org => (
+            <li key={org.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-slate-800">{org.name}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{ORG_TYPE_CONFIG[org.orgType]?.label ?? org.orgType} · {org.plan} · {formatDate(org.createdAt)}</p>
+              </div>
+              {org.isTrial && (
+                <span className="text-[10px] font-semibold uppercase text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-1.5 py-0.5 shrink-0">Trial</span>
+              )}
+            </li>
+          ))}
+          {recentOrgs.length === 0 && (
+            <li className="px-4 py-6 text-center text-sm text-slate-400">No organizations yet</li>
+          )}
+        </ul>
+      </div>
+    </div>
   )
-
-  const needsAttention = nonInternalOrgs.filter(o =>
-    o.subscriptionStatus === 'past_due' ||
-    o.subscriptionStatus === 'cancelled' ||
-    (o.isTrial && o.planStatus === 'expired') ||
-    (o.isTrial && o.planStatus === 'expiring_soon')
-  )
-
-  const kpis = {
-    totalOrgs: nonInternalOrgs.length,
-    payingViaPaystack: paystackPaying.length,
-    payingManually: manualPaying.length,
-    totalActiveProjects: nonInternalOrgs.reduce((sum, o) => sum + o.activeProjects, 0),
-    mrr: [...paystackPaying, ...manualPaying].reduce((sum, o) => sum + (PRICE_BY_PLAN[o.plan] ?? 0), 0),
-    needsAttentionCount: needsAttention.length,
-  }
-
-  const pendingInviteByEmail = new Map<string, { orgName: string; expired: boolean }>()
-  for (const inv of invites ?? []) {
-    const org = Array.isArray(inv.organizations) ? inv.organizations[0] : inv.organizations
-    pendingInviteByEmail.set(inv.email.toLowerCase(), {
-      orgName: org?.name ?? 'Unknown org',
-      expired: new Date(inv.expires_at) < new Date(now),
-    })
-  }
-
-  const orphanUsers: OrphanUser[] = users
-    .filter(u => !memberIds.has(u.id))
-    .map(u => {
-      const invite = u.email ? pendingInviteByEmail.get(u.email.toLowerCase()) : undefined
-      return {
-        id: u.id,
-        email: u.email ?? '',
-        createdAt: u.created_at,
-        confirmedAt: u.confirmed_at ?? null,
-        lastSignInAt: u.last_sign_in_at ?? null,
-        source: invite
-          ? { type: 'invited' as const, orgName: invite.orgName, expired: invite.expired }
-          : { type: 'self_registered' as const },
-      }
-    })
-
-  return <ControlCenterClient orgs={orgRows} kpis={kpis} orphanUsers={orphanUsers} />
 }
