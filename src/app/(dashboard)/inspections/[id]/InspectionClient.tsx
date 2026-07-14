@@ -2,10 +2,10 @@
 
 import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react'
+import { ArrowLeft, Camera, Loader2, CheckCircle2 } from 'lucide-react'
 import { compressImage } from '@/lib/compressImage'
-import { CONDITION_CONFIG, type Inspection, type InspectionItem, type ItemCondition, type Tenant, type Attachment } from '@/types'
+import SignaturePad from '@/components/inspections/SignaturePad'
+import { CONDITION_CONFIG, type Inspection, type InspectionItem, type InspectionStatus, type ItemCondition, type Tenant, type Attachment } from '@/types'
 
 const CONDITIONS: ItemCondition[] = ['good', 'fair', 'damaged', 'missing', 'not_applicable']
 
@@ -26,16 +26,20 @@ function groupByRoom(items: InspectionItem[]) {
 }
 
 export default function InspectionClient({ inspection }: { inspection: InspectionWithRelations }) {
-  const router = useRouter()
   const [items, setItems] = useState(inspection.items)
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>(
     Object.fromEntries(inspection.items.map(i => [i.id, i.note ?? '']))
   )
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [status, setStatus] = useState<InspectionStatus>(inspection.status)
+  const [tenantSigUrl, setTenantSigUrl] = useState(inspection.tenant_signature_url)
+  const [inspectorSigUrl, setInspectorSigUrl] = useState(inspection.inspector_signature_url)
+  const [savingSig, setSavingSig] = useState<'tenant' | 'inspector' | null>(null)
+  const [completing, setCompleting] = useState(false)
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({})
 
-  const readOnly = inspection.status !== 'draft'
+  const readOnly = status !== 'draft'
   const grouped = useMemo(() => groupByRoom(items), [items])
 
   async function updateItem(itemId: string, fields: { condition?: ItemCondition; note?: string }) {
@@ -73,9 +77,43 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'submitted' }),
       })
-      if (res.ok) router.refresh()
+      if (res.ok) setStatus('submitted')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function saveSignature(role: 'tenant' | 'inspector', file: File) {
+    setSavingSig(role)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('role', role)
+      const res = await fetch(`/api/inspections/${inspection.id}/signature`, { method: 'POST', body: formData })
+      if (res.ok) {
+        const updated = await res.json()
+        if (role === 'tenant') setTenantSigUrl(updated.tenant_signature_url)
+        else setInspectorSigUrl(updated.inspector_signature_url)
+      } else {
+        alert('Could not save signature. Please try again.')
+      }
+    } finally {
+      setSavingSig(null)
+    }
+  }
+
+  async function completeInspection() {
+    setCompleting(true)
+    try {
+      const res = await fetch(`/api/inspections/${inspection.id}/complete`, { method: 'POST' })
+      if (res.ok) {
+        setStatus('completed')
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Could not complete inspection.')
+      }
+    } finally {
+      setCompleting(false)
     }
   }
 
@@ -93,7 +131,7 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
           {inspection.type === 'move_in' ? 'Move-in' : 'Move-out'} inspection
         </h1>
         <p className="text-xs text-slate-400">
-          {inspection.tenant?.full_name ?? '—'} · {readOnly ? (inspection.status === 'completed' ? 'Completed' : 'Submitted') : 'In progress'}
+          {inspection.tenant?.full_name ?? '—'} · {status === 'completed' ? 'Completed' : status === 'submitted' ? 'Submitted' : 'In progress'}
         </p>
       </div>
 
@@ -172,16 +210,61 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
         ))}
       </div>
 
-      {!readOnly && (
+      {status !== 'draft' && (
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">Sign-off</p>
+          <div className="space-y-3">
+            {tenantSigUrl ? (
+              <div className="sf-card p-4">
+                <p className="mb-2 text-sm font-semibold text-slate-900">Tenant signature</p>
+                <img src={tenantSigUrl} alt="Tenant signature" className="h-24 rounded-lg border border-slate-100 bg-white" />
+              </div>
+            ) : status === 'submitted' ? (
+              <SignaturePad
+                label="Tenant signature"
+                signerName={inspection.tenant?.full_name ?? undefined}
+                onSave={file => saveSignature('tenant', file)}
+              />
+            ) : null}
+
+            {inspectorSigUrl ? (
+              <div className="sf-card p-4">
+                <p className="mb-2 text-sm font-semibold text-slate-900">Inspector signature</p>
+                <img src={inspectorSigUrl} alt="Inspector signature" className="h-24 rounded-lg border border-slate-100 bg-white" />
+              </div>
+            ) : status === 'submitted' && tenantSigUrl ? (
+              <SignaturePad label="Inspector signature" onSave={file => saveSignature('inspector', file)} />
+            ) : null}
+          </div>
+
+          {status === 'completed' && (
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-green-50 py-3 text-sm font-semibold text-green-700">
+              <CheckCircle2 className="h-4 w-4" /> Inspection completed
+            </div>
+          )}
+        </div>
+      )}
+
+      {(!readOnly || (status === 'submitted' && tenantSigUrl && inspectorSigUrl)) && (
         <div className="fixed inset-x-0 bottom-0 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-sm">
           <div className="mx-auto max-w-lg">
-            <button
-              onClick={submitInspection}
-              disabled={submitting}
-              className="sf-btn-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
-            >
-              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : 'Submit inspection'}
-            </button>
+            {!readOnly ? (
+              <button
+                onClick={submitInspection}
+                disabled={submitting}
+                className="sf-btn-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
+              >
+                {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : 'Submit inspection'}
+              </button>
+            ) : (
+              <button
+                onClick={completeInspection}
+                disabled={completing || savingSig !== null}
+                className="sf-btn-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
+              >
+                {completing ? <><Loader2 className="h-4 w-4 animate-spin" /> Completing…</> : 'Complete inspection'}
+              </button>
+            )}
           </div>
         </div>
       )}
