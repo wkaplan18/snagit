@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FolderOpen, AlertCircle, Users, FileText, Package } from 'lucide-react'
+import { LayoutDashboard, FolderOpen, AlertCircle, Users, FileText, Package, ClipboardList } from 'lucide-react'
 import type { DashboardTerms, OrgType } from '@/types'
 
 export default function BottomNav({ terms, fixedCount = 0, orgType = 'builder' }: { terms: DashboardTerms; fixedCount?: number; orgType?: OrgType }) {
@@ -14,8 +14,10 @@ export default function BottomNav({ terms, fixedCount = 0, orgType = 'builder' }
     { href: '/snags',       label: terms.issues,   icon: AlertCircle,     badge: fixedCount },
     { href: '/contractors', label: 'Team',         icon: Users,           badge: 0 },
     orgType === 'builder'
-      ? { href: '/materials', label: 'Materials', icon: Package,   badge: 0 }
-      : { href: '/reports',   label: 'Reports',   icon: FileText,  badge: 0 },
+      ? { href: '/materials', label: 'Materials', icon: Package, badge: 0 }
+      : orgType === 'property_manager' || orgType === 'body_corporate'
+      ? { href: '/inspections', label: terms.inspections, icon: ClipboardList, badge: 0 }
+      : { href: '/reports', label: 'Reports', icon: FileText, badge: 0 },
   ]
 
   return (

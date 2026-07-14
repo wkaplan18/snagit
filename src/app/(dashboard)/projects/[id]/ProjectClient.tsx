@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Home, ChevronDown, ChevronRight, Camera, MapPin, Printer, AlertCircle, X, Loader2, Link2 } from 'lucide-react'
+import { ArrowLeft, Plus, Home, ChevronDown, ChevronRight, Camera, MapPin, Printer, AlertCircle, X, Loader2, Link2, ClipboardList } from 'lucide-react'
 import { waLink } from '@/lib/whatsappLink'
 import SnagCard from '@/components/snags/SnagCard'
 import { DEFAULT_ROOMS, DEFAULT_HOTEL_ROOM_AREAS, HOTEL_UNIT_TYPES, BUILDER_UNIT_TYPES, type Contractor, type DashboardTerms, type OrgType, type Room, type Snag, type UnitType } from '@/types'
@@ -270,7 +270,13 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                 const openCount = openCountsByUnit[u.id] ?? 0
                 return (
                   <div key={u.id} className="sf-card overflow-hidden">
-                    <button onClick={() => setOpenUnit(open ? null : u.id)} className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setOpenUnit(open ? null : u.id)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setOpenUnit(open ? null : u.id) }}
+                      className="flex w-full cursor-pointer items-center justify-between p-4 text-left hover:bg-slate-50 transition-colors"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EEF4FF]">
                           <Home className="h-5 w-5 text-[#1A56DB]" />
@@ -286,9 +292,19 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                             {openCount}
                           </span>
                         )}
+                        {hasTenantPortal && (
+                          <Link
+                            href={`/units/${u.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1A56DB]"
+                            title="Tenants & inspections"
+                          >
+                            <ClipboardList className="h-4 w-4" />
+                          </Link>
+                        )}
                         {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                       </div>
-                    </button>
+                    </div>
                     {open && <UnitSnags projectId={project.id} unitId={u.id} unitName={u.name} snags={snagsByUnit[u.id] ?? []} terms={terms} />}
                   </div>
                 )

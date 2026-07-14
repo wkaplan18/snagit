@@ -25,13 +25,15 @@ export interface DashboardTerms {
   unit: string
   units: string
   shareRecipient: string
+  inspection: string
+  inspections: string
 }
 
 export const DASHBOARD_TERMS: Record<OrgType, DashboardTerms> = {
-  builder:          { project: 'Project',  projects: 'Projects',   issue: 'Snag',  issues: 'Snags',  contractor: 'Contractor',   contractorTrade: 'Trade', internalLabel: 'Staff',            externalLabel: 'Subcontractor', unit: 'Unit',  units: 'Units', shareRecipient: 'client'   },
-  hotel:            { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Staff member', contractorTrade: 'Role',  internalLabel: 'Maintenance Staff', externalLabel: 'Contractor',    unit: 'Room',  units: 'Rooms', shareRecipient: 'ownership' },
-  property_manager: { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Contractor',   contractorTrade: 'Trade', internalLabel: 'Staff',            externalLabel: 'Contractor',    unit: 'Unit',  units: 'Units', shareRecipient: 'owner'    },
-  body_corporate:   { project: 'Complex',  projects: 'Complexes',  issue: 'Issue', issues: 'Issues', contractor: 'Contractor',   contractorTrade: 'Trade', internalLabel: 'Building Staff',   externalLabel: 'Contractor',    unit: 'Unit',  units: 'Units', shareRecipient: 'trustees' },
+  builder:          { project: 'Project',  projects: 'Projects',   issue: 'Snag',  issues: 'Snags',  contractor: 'Contractor',   contractorTrade: 'Trade', internalLabel: 'Staff',            externalLabel: 'Subcontractor', unit: 'Unit',  units: 'Units', shareRecipient: 'client',    inspection: 'Inspection', inspections: 'Inspections' },
+  hotel:            { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Staff member', contractorTrade: 'Role',  internalLabel: 'Maintenance Staff', externalLabel: 'Contractor',    unit: 'Room',  units: 'Rooms', shareRecipient: 'ownership', inspection: 'Inspection', inspections: 'Inspections' },
+  property_manager: { project: 'Property', projects: 'Properties', issue: 'Issue', issues: 'Issues', contractor: 'Contractor',   contractorTrade: 'Trade', internalLabel: 'Staff',            externalLabel: 'Contractor',    unit: 'Unit',  units: 'Units', shareRecipient: 'owner',     inspection: 'Inspection', inspections: 'Inspections' },
+  body_corporate:   { project: 'Complex',  projects: 'Complexes',  issue: 'Issue', issues: 'Issues', contractor: 'Contractor',   contractorTrade: 'Trade', internalLabel: 'Building Staff',   externalLabel: 'Contractor',    unit: 'Unit',  units: 'Units', shareRecipient: 'trustees',  inspection: 'Inspection', inspections: 'Inspections' },
 }
 
 export type SnagStatus = 'open' | 'assigned' | 'in_progress' | 'fixed' | 'approved' | 'closed' | 'rejected'
@@ -186,7 +188,8 @@ export interface Snag {
 
 export interface Attachment {
   id: string
-  snag_id: string
+  snag_id: string | null
+  inspection_item_id: string | null
   storage_path: string
   public_url: string
   file_name: string | null
@@ -243,6 +246,16 @@ export const STATUS_CONFIG: Record<SnagStatus, { label: string; color: string; b
   rejected:    { label: 'Rejected',    color: 'text-rose-700',   bg: 'bg-rose-50 border-rose-200' },
 }
 
+export type ItemCondition = 'good' | 'fair' | 'damaged' | 'missing' | 'not_applicable'
+
+export const CONDITION_CONFIG: Record<ItemCondition, { label: string; color: string; bg: string }> = {
+  good:           { label: 'Good',           color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+  fair:           { label: 'Fair',           color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+  damaged:        { label: 'Damaged',        color: 'text-rose-700',  bg: 'bg-rose-50 border-rose-200' },
+  missing:        { label: 'Missing',        color: 'text-rose-700',  bg: 'bg-rose-50 border-rose-200' },
+  not_applicable: { label: 'N/A',            color: 'text-gray-500',  bg: 'bg-gray-50 border-gray-200' },
+}
+
 export const DEFAULT_ROOMS = [
   'Kitchen',
   'Lounge',
@@ -297,6 +310,100 @@ export interface MaterialRequest {
   created_at: string
   // joined
   project?: { id: string; name: string } | null
+}
+
+export type TenancyStatus = 'active' | 'ended'
+
+export interface Tenant {
+  id: string
+  org_id: string
+  unit_id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  whatsapp: string | null
+  lease_start_date: string
+  lease_end_date: string | null
+  move_out_date: string | null
+  status: TenancyStatus
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InspectionTemplate {
+  id: string
+  org_id: string
+  name: string
+  unit_type: UnitType | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  rooms?: InspectionTemplateRoom[]
+}
+
+export interface InspectionTemplateRoom {
+  id: string
+  template_id: string
+  name: string
+  room_order: number
+  created_at: string
+  // joined
+  items?: InspectionTemplateItem[]
+}
+
+export interface InspectionTemplateItem {
+  id: string
+  template_room_id: string
+  label: string
+  item_order: number
+  created_at: string
+}
+
+export type InspectionType = 'move_in' | 'move_out'
+export type InspectionStatus = 'draft' | 'submitted' | 'completed'
+
+export interface Inspection {
+  id: string
+  org_id: string
+  unit_id: string
+  tenant_id: string
+  template_id: string | null
+  type: InspectionType
+  status: InspectionStatus
+  inspector_id: string | null
+  inspected_at: string | null
+  linked_move_in_inspection_id: string | null
+  tenant_signature_url: string | null
+  tenant_signed_at: string | null
+  inspector_signature_url: string | null
+  inspector_signed_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  items?: InspectionItem[]
+  tenant?: Tenant | null
+  unit?: { id: string; name: string } | null
+}
+
+export interface InspectionItem {
+  id: string
+  inspection_id: string
+  template_item_id: string | null
+  room_name: string
+  item_label: string
+  item_order: number
+  condition: ItemCondition
+  note: string | null
+  converted_snag_id: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  attachments?: Attachment[]
 }
 
 export const SA_PROVINCES = [
