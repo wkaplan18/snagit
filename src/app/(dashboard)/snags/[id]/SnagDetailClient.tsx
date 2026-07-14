@@ -156,6 +156,13 @@ export default function SnagDetailClient({ snag, contractors, terms, orgId, room
     if (s === 'fixed') fields.fixed_at = new Date().toISOString()
     if (s === 'closed') fields.closed_at = new Date().toISOString()
     await update(fields)
+    if (s === 'rejected') {
+      fetch('/api/notifications/whatsapp/rejected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snagId: snag.id }),
+      }).catch(() => {})
+    }
   }
 
   async function handleDelete() {

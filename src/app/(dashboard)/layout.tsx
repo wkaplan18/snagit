@@ -50,7 +50,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
 
     const [{ count: fixed }, { count: badge }] = await Promise.all([
-      supabase.from('snags').select('id', { count: 'exact', head: true }).eq('status', 'fixed'),
+      activeOrgId
+        ? supabase
+            .from('snags')
+            .select('id, project:projects!inner(org_id)', { count: 'exact', head: true })
+            .eq('project.org_id', activeOrgId)
+            .eq('status', 'fixed')
+        : Promise.resolve({ count: 0 }),
       activeOrgId
         ? supabase
             .from('snags')

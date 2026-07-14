@@ -53,6 +53,44 @@ export async function sendSnagAssignedWhatsApp(payload: WhatsAppSnagPayload) {
   return res.json()
 }
 
+export async function sendSnagRejectedWhatsApp(payload: WhatsAppSnagPayload) {
+  const link = `${BASE_URL}/c/${payload.contractorToken}`
+
+  const message = {
+    countryCode: '27',
+    phoneNumber: payload.contractorWhatsApp.replace(/\D/g, '').replace(/^27/, '').replace(/^0/, ''),
+    callbackData: 'snag_rejected',
+    type: 'Template',
+    template: {
+      name: 'snag_rejected_v1',
+      languageCode: 'en',
+      bodyValues: [
+        payload.contractorName,
+        payload.projectName,
+        `${payload.unitName} → ${payload.roomName}`,
+        payload.description,
+        link,
+      ],
+    },
+  }
+
+  const res = await fetch(INTERAKT_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(API_KEY).toString('base64')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(message),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`WhatsApp send failed: ${err}`)
+  }
+
+  return res.json()
+}
+
 export async function sendResolutionApprovalWhatsApp(
   managerWhatsApp: string,
   managerName: string,
