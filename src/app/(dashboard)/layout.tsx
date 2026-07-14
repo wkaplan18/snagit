@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
 import BottomNav from '@/components/ui/BottomNav'
 import OrgSwitcher from '@/components/ui/OrgSwitcher'
 import AppBadgeSync from '@/components/ui/AppBadgeSync'
@@ -26,6 +28,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const activeOrg = allOrgs.find(o => o.org_id === activeOrgId)
     const orgType = (activeOrg?.org?.org_type ?? 'builder') as OrgType
     terms = DASHBOARD_TERMS[orgType]
+
+    // Billing lock: expired unpaid trials and cancelled subscriptions lose app
+    // access and are sent to the standalone billing page to subscribe.
+    if (activeOrgId && !isPlatformOwner(user.email)) {
+      const admin = createAdminClient()
+      const { data: orgFlags } = await admin
+        .from('organizations')
+        .select('is_trial, is_internal_test, plan_expires_at, subscription_status')
+        .eq('id', activeOrgId)
+        .single()
+
+      if (orgFlags && !orgFlags.is_internal_test && orgFlags.subscription_status !== 'active') {
+        // A future plan_expires_at is a manual override (trial extension / grace period)
+        const hasFuturePeriod = orgFlags.plan_expires_at && new Date(orgFlags.plan_expires_at) > new Date()
+        const trialExpired = orgFlags.is_trial && orgFlags.plan_expires_at && new Date(orgFlags.plan_expires_at) < new Date()
+        if (!hasFuturePeriod && (trialExpired || orgFlags.subscription_status === 'cancelled')) {
+          redirect('/billing?locked=1')
+        }
+      }
+    }
 
     const [{ count: fixed }, { count: badge }] = await Promise.all([
       supabase.from('snags').select('id', { count: 'exact', head: true }).eq('status', 'fixed'),

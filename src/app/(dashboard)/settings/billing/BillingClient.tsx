@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CreditCard, Check, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { ArrowLeft, CreditCard, Check, CheckCircle, AlertTriangle, Loader2, Lock } from 'lucide-react'
 
 const PLANS = [
   {
@@ -36,11 +36,13 @@ interface Props {
   planExpiresAt: string | null
   propertyCount: number
   canManage: boolean
+  standalone?: boolean
 }
 
-export default function BillingClient({ currentPlan, subscriptionStatus, isTrial, planExpiresAt, propertyCount, canManage }: Props) {
+export default function BillingClient({ currentPlan, subscriptionStatus, isTrial, planExpiresAt, propertyCount, canManage, standalone = false }: Props) {
   const searchParams = useSearchParams()
   const payment = searchParams.get('payment')
+  const locked = searchParams.get('locked') === '1'
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [error, setError] = useState('')
 
@@ -66,10 +68,12 @@ export default function BillingClient({ currentPlan, subscriptionStatus, isTrial
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Link href="/settings" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="h-4 w-4" />
-        Back to settings
-      </Link>
+      {!standalone && (
+        <Link href="/settings" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+          <ArrowLeft className="h-4 w-4" />
+          Back to settings
+        </Link>
+      )}
 
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF4FF]">
@@ -81,6 +85,16 @@ export default function BillingClient({ currentPlan, subscriptionStatus, isTrial
         </div>
       </div>
 
+      {locked && payment !== 'success' && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <Lock className="h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-sm font-medium text-amber-800">
+            {canManage
+              ? 'Your free trial has ended. Choose a plan below to keep using SnagIT — all your data is safe and waiting.'
+              : 'This organisation’s free trial has ended. Ask your organisation owner to choose a plan to restore access.'}
+          </p>
+        </div>
+      )}
       {payment === 'success' && (
         <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
           <CheckCircle className="h-5 w-5 shrink-0 text-green-600" />

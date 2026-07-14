@@ -22,6 +22,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: 'Confirmation email does not match' }, { status: 400 })
   }
 
+  // Org owners must transfer or delete their org first — deleting them would orphan the org
+  const { data: ownerships } = await admin
+    .from('org_members')
+    .select('org_id')
+    .eq('user_id', id)
+    .eq('role', 'owner')
+  if (ownerships && ownerships.length > 0) {
+    return NextResponse.json({ error: 'This user owns an organisation. Delete or reassign the org first.' }, { status: 400 })
+  }
+
   // Clean up any still-pending invite for this email so the org can re-invite the same address
   await admin.from('org_invites').delete().is('accepted_at', null).ilike('email', email)
 

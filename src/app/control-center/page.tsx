@@ -13,16 +13,47 @@ const PRICE_BY_PLAN: Record<string, number | null> = {
   enterprise: null, // custom pricing — excluded from MRR auto-calc
 }
 
+interface PaystackSub {
+  status: string
+  nextPaymentDate: string | null
+}
+
+// Live subscription state from Paystack, keyed by subscription_code
+async function fetchPaystackSubs(): Promise<Map<string, PaystackSub>> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY
+  const map = new Map<string, PaystackSub>()
+  if (!secretKey) return map
+  try {
+    const res = await fetch('https://api.paystack.co/subscription?perPage=100', {
+      headers: { Authorization: `Bearer ${secretKey}` },
+      signal: AbortSignal.timeout(8000),
+    })
+    const json = await res.json()
+    for (const s of json?.data ?? []) {
+      if (s.subscription_code) {
+        map.set(s.subscription_code, {
+          status: s.status,
+          nextPaymentDate: s.next_payment_date ?? null,
+        })
+      }
+    }
+  } catch {
+    // Paystack unreachable — dashboard degrades to DB-only data
+  }
+  return map
+}
+
 export default async function ControlCenterPage() {
   const admin = createAdminClient()
 
-  const [{ data: orgs }, { data: rawMembers }, { data: projects }, { data: snags }, { data: { users } }, { data: invites }] = await Promise.all([
-    admin.from('organizations').select('id, name, org_type, plan, plan_expires_at, is_trial, is_internal_test, email, created_at'),
+  const [{ data: orgs }, { data: rawMembers }, { data: projects }, { data: snags }, { data: { users } }, { data: invites }, paystackSubs] = await Promise.all([
+    admin.from('organizations').select('id, name, org_type, plan, plan_expires_at, is_trial, is_internal_test, email, created_at, subscription_status, paystack_subscription_code, paystack_customer_code'),
     admin.from('org_members').select('org_id, user_id, role'),
     admin.from('projects').select('id, org_id, status'),
     admin.from('snags').select('id, status, project:projects(org_id)'),
     admin.auth.admin.listUsers({ perPage: 1000 }),
-    admin.from('org_invites').select('email, accepted_at, expires_at, organizations(name)').is('accepted_at', null),
+    admin.from('org_invites').select('id, org_id, email, role, accepted_at, expires_at, organizations(name)').is('accepted_at', null),
+    fetchPaystackSubs(),
   ])
 
   // Resolve member emails/names once, then group by org
@@ -34,11 +65,24 @@ export default async function ControlCenterPage() {
     profileMap = new Map((profiles ?? []).map(p => [p.id, p.full_name]))
   }
 
-  const membersByOrg = new Map<string, { email: string; name: string | null; role: string }[]>()
+  const membersByOrg = new Map<string, { userId: string; email: string; name: string | null; role: string }[]>()
   for (const m of rawMembers ?? []) {
     const list = membersByOrg.get(m.org_id) ?? []
-    list.push({ email: userMap.get(m.user_id) ?? '', name: profileMap.get(m.user_id) ?? null, role: m.role })
+    list.push({ userId: m.user_id, email: userMap.get(m.user_id) ?? '', name: profileMap.get(m.user_id) ?? null, role: m.role })
     membersByOrg.set(m.org_id, list)
+  }
+
+  const invitesByOrg = new Map<string, { id: string; email: string; role: string; expiresAt: string; expired: boolean }[]>()
+  for (const inv of invites ?? []) {
+    const list = invitesByOrg.get(inv.org_id) ?? []
+    list.push({
+      id: inv.id,
+      email: inv.email,
+      role: inv.role,
+      expiresAt: inv.expires_at,
+      expired: new Date(inv.expires_at) < new Date(),
+    })
+    invitesByOrg.set(inv.org_id, list)
   }
 
   const projectCounts = new Map<string, { active: number; total: number }>()
@@ -71,6 +115,8 @@ export default async function ControlCenterPage() {
       else planStatus = 'active'
     }
 
+    const liveSub = o.paystack_subscription_code ? paystackSubs.get(o.paystack_subscription_code) : undefined
+
     return {
       id: o.id,
       name: o.name,
@@ -82,22 +128,39 @@ export default async function ControlCenterPage() {
       isInternalTest: o.is_internal_test,
       email: o.email,
       createdAt: o.created_at,
+      subscriptionStatus: o.subscription_status ?? 'none',
+      hasPaystackSub: !!o.paystack_subscription_code,
+      hasPaystackCustomer: !!o.paystack_customer_code,
+      nextPaymentDate: liveSub?.nextPaymentDate ?? null,
       members: membersByOrg.get(o.id) ?? [],
+      pendingInvites: invitesByOrg.get(o.id) ?? [],
       activeProjects: projectCounts.get(o.id)?.active ?? 0,
       totalProjects: projectCounts.get(o.id)?.total ?? 0,
       openSnags: openSnagCounts.get(o.id) ?? 0,
     }
   })
 
-  const billableOrgs = orgRows.filter(o => !o.isInternalTest && !o.isTrial && o.planStatus !== 'expired')
   const nonInternalOrgs = orgRows.filter(o => !o.isInternalTest)
+  const paystackPaying = nonInternalOrgs.filter(o => o.subscriptionStatus === 'active')
+  // Manually-managed paying orgs (EFT / enterprise) — billed outside Paystack
+  const manualPaying = nonInternalOrgs.filter(o =>
+    o.subscriptionStatus === 'none' && !o.isTrial && o.planStatus !== 'expired'
+  )
+
+  const needsAttention = nonInternalOrgs.filter(o =>
+    o.subscriptionStatus === 'past_due' ||
+    o.subscriptionStatus === 'cancelled' ||
+    (o.isTrial && o.planStatus === 'expired') ||
+    (o.isTrial && o.planStatus === 'expiring_soon')
+  )
 
   const kpis = {
     totalOrgs: nonInternalOrgs.length,
-    activeOrgs: nonInternalOrgs.filter(o => o.planStatus === 'active' || o.planStatus === 'expiring_soon').length,
+    payingViaPaystack: paystackPaying.length,
+    payingManually: manualPaying.length,
     totalActiveProjects: nonInternalOrgs.reduce((sum, o) => sum + o.activeProjects, 0),
-    estimatedMrr: billableOrgs.reduce((sum, o) => sum + (PRICE_BY_PLAN[o.plan] ?? 0), 0),
-    expiringSoonCount: nonInternalOrgs.filter(o => o.planStatus === 'expiring_soon').length,
+    mrr: [...paystackPaying, ...manualPaying].reduce((sum, o) => sum + (PRICE_BY_PLAN[o.plan] ?? 0), 0),
+    needsAttentionCount: needsAttention.length,
   }
 
   const pendingInviteByEmail = new Map<string, { orgName: string; expired: boolean }>()

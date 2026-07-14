@@ -7,9 +7,18 @@ import type { OrgType } from '@/types'
 import { isPlatformOwner } from '@/lib/isPlatformOwner'
 
 export interface OrgMember {
+  userId: string
   email: string
   name: string | null
   role: string
+}
+
+export interface PendingInvite {
+  id: string
+  email: string
+  role: string
+  expiresAt: string
+  expired: boolean
 }
 
 export interface OrgRow {
@@ -23,7 +32,12 @@ export interface OrgRow {
   isInternalTest: boolean
   email: string | null
   createdAt: string
+  subscriptionStatus: string
+  hasPaystackSub: boolean
+  hasPaystackCustomer: boolean
+  nextPaymentDate: string | null
   members: OrgMember[]
+  pendingInvites: PendingInvite[]
   activeProjects: number
   totalProjects: number
   openSnags: number
@@ -31,10 +45,11 @@ export interface OrgRow {
 
 interface Kpis {
   totalOrgs: number
-  activeOrgs: number
+  payingViaPaystack: number
+  payingManually: number
   totalActiveProjects: number
-  estimatedMrr: number
-  expiringSoonCount: number
+  mrr: number
+  needsAttentionCount: number
 }
 
 const PLAN_OPTIONS = [
@@ -49,6 +64,20 @@ const PLAN_STATUS_CONFIG: Record<OrgRow['planStatus'], { label: string; classNam
   expiring_soon: { label: 'Expiring soon', className: 'text-amber-700 bg-amber-50 border-amber-200' },
   active: { label: 'Active', className: 'text-green-700 bg-green-50 border-green-200' },
   no_expiry: { label: 'No expiry set', className: 'text-slate-500 bg-slate-50 border-slate-200' },
+}
+
+const SUB_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  active: { label: 'Paystack · active', className: 'text-green-700 bg-green-50 border-green-200' },
+  past_due: { label: 'Paystack · overdue', className: 'text-amber-700 bg-amber-50 border-amber-200' },
+  cancelled: { label: 'Paystack · cancelled', className: 'text-red-700 bg-red-50 border-red-200' },
+}
+
+function attentionReason(org: OrgRow): string | null {
+  if (org.subscriptionStatus === 'past_due') return 'Subscription payment failed'
+  if (org.subscriptionStatus === 'cancelled') return 'Subscription cancelled'
+  if (org.isTrial && org.planStatus === 'expired') return 'Trial expired — not paying'
+  if (org.isTrial && org.planStatus === 'expiring_soon') return 'Trial ending soon'
+  return null
 }
 
 const PLAN_STATUS_SORT_ORDER: Record<OrgRow['planStatus'], number> = {
@@ -150,6 +179,245 @@ function OrgEditForm({ org, onSaved }: { org: OrgRow; onSaved: () => void }) {
         </button>
       </div>
     </div>
+  )
+}
+
+interface Payment {
+  paidAt: string
+  amount: number
+  status: string
+  reference: string
+  channel: string
+}
+
+function BillingPanel({ org, onChanged }: { org: OrgRow; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [payments, setPayments] = useState<Payment[] | null>(null)
+  const [loadingPayments, setLoadingPayments] = useState(false)
+
+  const sub = SUB_STATUS_CONFIG[org.subscriptionStatus]
+
+  async function extendTrial(days: number) {
+    setBusy(true)
+    setError('')
+    const current = org.planExpiresAt ? new Date(org.planExpiresAt).getTime() : 0
+    const base = current > Date.now() ? current : Date.now()
+    const res = await fetch(`/api/control-center/orgs/${org.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan_expires_at: new Date(base + days * 24 * 60 * 60 * 1000).toISOString(),
+        is_trial: true,
+      }),
+    })
+    setBusy(false)
+    if (!res.ok) { setError('Failed to extend trial'); return }
+    setNotice(`Trial extended by ${days} days`)
+    onChanged()
+  }
+
+  async function cancelSubscription() {
+    if (!confirm(`Cancel ${org.name}'s Paystack subscription? No further charges will go through.`)) return
+    setBusy(true)
+    setError('')
+    const res = await fetch('/api/control-center/billing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel', orgId: org.id }),
+    })
+    setBusy(false)
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) { setError(body.error ?? 'Failed to cancel'); return }
+    setNotice('Subscription cancelled')
+    onChanged()
+  }
+
+  async function loadPayments() {
+    if (payments) { setPayments(null); return }
+    setLoadingPayments(true)
+    setError('')
+    const res = await fetch(`/api/control-center/billing?orgId=${org.id}`)
+    const body = await res.json().catch(() => ({}))
+    setLoadingPayments(false)
+    if (!res.ok) { setError(body.error ?? 'Failed to load payments'); return }
+    setPayments(body.payments ?? [])
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-slate-500">Billing</p>
+        {sub ? (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${sub.className}`}>{sub.label}</span>
+        ) : (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full border text-slate-500 bg-slate-50 border-slate-200">
+            {org.isTrial ? 'On trial — no subscription' : 'No Paystack subscription (manual billing)'}
+          </span>
+        )}
+        {org.nextPaymentDate && org.subscriptionStatus === 'active' && (
+          <span className="text-xs text-slate-400">Next payment: {formatDate(org.nextPaymentDate)}</span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-slate-400 mr-1">Extend trial:</span>
+        {[7, 14, 30].map(d => (
+          <button
+            key={d}
+            onClick={() => extendTrial(d)}
+            disabled={busy}
+            className="text-xs font-semibold text-slate-600 border border-slate-200 rounded-md px-2 py-1 hover:bg-slate-50 disabled:opacity-40"
+          >
+            +{d} days
+          </button>
+        ))}
+        {org.hasPaystackCustomer && (
+          <button
+            onClick={loadPayments}
+            disabled={loadingPayments}
+            className="text-xs font-semibold text-slate-600 border border-slate-200 rounded-md px-2 py-1 hover:bg-slate-50 disabled:opacity-40"
+          >
+            {loadingPayments ? 'Loading…' : payments ? 'Hide payments' : 'View payments'}
+          </button>
+        )}
+        {org.hasPaystackSub && org.subscriptionStatus !== 'cancelled' && (
+          <button
+            onClick={cancelSubscription}
+            disabled={busy}
+            className="text-xs font-semibold text-red-600 border border-red-200 rounded-md px-2 py-1 hover:bg-red-50 disabled:opacity-40"
+          >
+            Cancel subscription
+          </button>
+        )}
+      </div>
+
+      {payments && (
+        payments.length === 0 ? (
+          <p className="text-xs text-slate-400">No payments on record.</p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-slate-400 border-b border-slate-100">
+                <th className="py-1 pr-3 font-medium">Date</th>
+                <th className="py-1 pr-3 font-medium">Amount</th>
+                <th className="py-1 pr-3 font-medium">Status</th>
+                <th className="py-1 font-medium">Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map(p => (
+                <tr key={p.reference} className="border-b border-slate-50 last:border-0">
+                  <td className="py-1.5 pr-3 text-slate-600">{formatDate(p.paidAt)}</td>
+                  <td className="py-1.5 pr-3 text-slate-800 font-medium">{formatCurrency(p.amount)}</td>
+                  <td className={`py-1.5 pr-3 font-medium ${p.status === 'success' ? 'text-green-600' : 'text-red-600'}`}>{p.status}</td>
+                  <td className="py-1.5 text-slate-400 font-mono text-[10px]">{p.reference}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      )}
+
+      {notice && <p className="text-xs text-green-600">{notice}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+function MemberRow({ member, onChanged }: { member: OrgMember; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState('')
+
+  async function resetPassword() {
+    setBusy(true)
+    setStatus('')
+    const res = await fetch('/api/control-center/users/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: member.email }),
+    })
+    setBusy(false)
+    setStatus(res.ok ? 'Reset email sent ✓' : 'Failed to send')
+  }
+
+  async function deleteUser() {
+    if (!confirm(`Delete ${member.email} entirely? They lose access to SnagIT. This cannot be undone.`)) return
+    setBusy(true)
+    setStatus('')
+    const res = await fetch(`/api/control-center/users/${member.userId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmEmail: member.email }),
+    })
+    setBusy(false)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setStatus(body.error ?? 'Failed to delete')
+      return
+    }
+    onChanged()
+  }
+
+  return (
+    <li className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+      <span className="font-medium">{member.email}</span>
+      {member.name && <span className="text-slate-400">({member.name})</span>}
+      <span className="text-slate-400 uppercase text-[10px] bg-slate-100 rounded-full px-1.5 py-0.5">{member.role}</span>
+      <button
+        onClick={resetPassword}
+        disabled={busy}
+        className="text-[11px] font-semibold text-slate-500 border border-slate-200 rounded-md px-1.5 py-0.5 hover:bg-slate-50 disabled:opacity-40"
+      >
+        Reset password
+      </button>
+      {member.role !== 'owner' && !isPlatformOwner(member.email) && (
+        <button
+          onClick={deleteUser}
+          disabled={busy}
+          className="text-[11px] font-semibold text-red-500 border border-red-200 rounded-md px-1.5 py-0.5 hover:bg-red-50 disabled:opacity-40"
+        >
+          Delete
+        </button>
+      )}
+      {status && <span className={status.includes('✓') ? 'text-green-600' : 'text-red-600'}>{status}</span>}
+    </li>
+  )
+}
+
+function PendingInviteRow({ invite }: { invite: PendingInvite }) {
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState('')
+
+  async function resend() {
+    setBusy(true)
+    setStatus('')
+    const res = await fetch('/api/control-center/invites/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inviteId: invite.id }),
+    })
+    setBusy(false)
+    setStatus(res.ok ? 'Resent ✓' : 'Failed to resend')
+  }
+
+  return (
+    <li className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
+      <span className="font-medium">{invite.email}</span>
+      <span className="text-slate-400 uppercase text-[10px] bg-slate-100 rounded-full px-1.5 py-0.5">{invite.role}</span>
+      <span className={`text-[11px] ${invite.expired ? 'text-red-500' : 'text-slate-400'}`}>
+        {invite.expired ? 'Expired' : `Expires ${formatDate(invite.expiresAt)}`}
+      </span>
+      <button
+        onClick={resend}
+        disabled={busy}
+        className="text-[11px] font-semibold text-slate-500 border border-slate-200 rounded-md px-1.5 py-0.5 hover:bg-slate-50 disabled:opacity-40"
+      >
+        {busy ? 'Sending…' : 'Resend invite'}
+      </button>
+      {status && <span className={status.includes('✓') ? 'text-green-600' : 'text-red-600'}>{status}</span>}
+    </li>
   )
 }
 
@@ -311,6 +579,8 @@ export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs:
 
   const visibleOrphanUsers = orphanUsers.filter(u => !removedUserIds.has(u.id))
 
+  const attentionOrgs = orgs.filter(o => !o.isInternalTest && attentionReason(o) !== null)
+
   const sortedOrgs = useMemo(() => {
     const copy = [...orgs]
     if (sortKey === 'planStatus') {
@@ -325,11 +595,27 @@ export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs:
     <div className="px-4 py-4 space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiTile label="Total orgs" value={String(kpis.totalOrgs)} sub="excl. internal testing" />
-        <KpiTile label="Active orgs" value={String(kpis.activeOrgs)} />
+        <KpiTile label="MRR" value={formatCurrency(kpis.mrr)} sub={`${kpis.payingViaPaystack} via Paystack · ${kpis.payingManually} manual`} />
+        <KpiTile label="Paying subscribers" value={String(kpis.payingViaPaystack + kpis.payingManually)} />
         <KpiTile label="Billable projects" value={String(kpis.totalActiveProjects)} sub="active projects/properties" />
-        <KpiTile label="Estimated MRR" value={formatCurrency(kpis.estimatedMrr)} sub="paying orgs by plan" />
-        <KpiTile label="Expiring soon" value={String(kpis.expiringSoonCount)} sub="within 14 days" />
+        <KpiTile label="Needs attention" value={String(kpis.needsAttentionCount)} sub="billing issues & trials" />
       </div>
+
+      {attentionOrgs.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1.5">
+          <p className="text-xs font-semibold text-amber-800">Needs attention</p>
+          {attentionOrgs.map(org => (
+            <button
+              key={org.id}
+              onClick={() => setExpandedId(org.id)}
+              className="flex w-full items-center justify-between gap-2 text-left text-xs hover:opacity-70"
+            >
+              <span className="font-medium text-amber-900">{org.name}</span>
+              <span className="text-amber-700">{attentionReason(org)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-700">Organizations</h2>
@@ -389,6 +675,11 @@ export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs:
                       <span className={`inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${status.className}`}>
                         {status.label}
                       </span>
+                      {SUB_STATUS_CONFIG[org.subscriptionStatus] && (
+                        <span className={`ml-1 inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${SUB_STATUS_CONFIG[org.subscriptionStatus].className}`}>
+                          {SUB_STATUS_CONFIG[org.subscriptionStatus].label}
+                        </span>
+                      )}
                       <p className="text-xs text-slate-400 mt-0.5">{org.plan} · {formatDate(org.planExpiresAt)}</p>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{org.members.length}</td>
@@ -399,22 +690,29 @@ export default function ControlCenterClient({ orgs, kpis, orphanUsers }: { orgs:
                   {isExpanded && (
                     <tr className="border-b border-slate-50 last:border-0 bg-slate-50/50">
                       <td colSpan={7} className="px-4 py-4 space-y-4">
+                        <BillingPanel org={org} onChanged={() => router.refresh()} />
                         <div>
                           <p className="text-xs font-semibold text-slate-500 mb-2">Members</p>
                           {org.members.length === 0 ? (
                             <p className="text-xs text-slate-400">No members</p>
                           ) : (
-                            <ul className="space-y-1">
-                              {org.members.map((m, i) => (
-                                <li key={i} className="text-xs text-slate-600 flex items-center gap-2">
-                                  <span className="font-medium">{m.email}</span>
-                                  {m.name && <span className="text-slate-400">({m.name})</span>}
-                                  <span className="text-slate-400 uppercase text-[10px] bg-slate-100 rounded-full px-1.5 py-0.5">{m.role}</span>
-                                </li>
+                            <ul className="space-y-1.5">
+                              {org.members.map(m => (
+                                <MemberRow key={m.userId} member={m} onChanged={() => router.refresh()} />
                               ))}
                             </ul>
                           )}
                         </div>
+                        {org.pendingInvites.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 mb-2">Pending invites</p>
+                            <ul className="space-y-1.5">
+                              {org.pendingInvites.map(inv => (
+                                <PendingInviteRow key={inv.id} invite={inv} />
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <OrgEditForm org={org} onSaved={() => router.refresh()} />
                         <DeleteOrgSection org={org} onDeleted={() => { setExpandedId(null); router.refresh() }} />
                       </td>
