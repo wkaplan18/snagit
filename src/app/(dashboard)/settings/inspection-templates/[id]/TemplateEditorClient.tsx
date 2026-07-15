@@ -145,6 +145,7 @@ export default function TemplateEditorClient({ template }: { template: Inspectio
                   type="text"
                   value={newItemDraft[ri] ?? ''}
                   onChange={e => setNewItemDraft(d => ({ ...d, [ri]: e.target.value }))}
+                  onBlur={() => addItem(ri)}
                   placeholder="Add item (e.g. Walls, Ceiling)"
                   className="sf-input flex-1 py-2 text-sm"
                 />
