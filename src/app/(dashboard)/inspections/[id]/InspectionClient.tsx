@@ -6,7 +6,7 @@ import { ArrowLeft, Camera, Loader2, CheckCircle2, AlertTriangle, Scale, Printer
 import { compressImage } from '@/lib/compressImage'
 import SignaturePad from '@/components/inspections/SignaturePad'
 import { reliableFetch, getQueueCount, onQueueChange, startAutoFlush } from '@/lib/offlineQueue'
-import { CONDITION_CONFIG, type Inspection, type InspectionItem, type InspectionStatus, type ItemCondition, type Tenant, type Attachment } from '@/types'
+import { CONDITION_CONFIG, STATUS_CONFIG, type Inspection, type InspectionItem, type InspectionStatus, type ItemCondition, type SnagStatus, type Tenant, type Attachment } from '@/types'
 
 const CONDITIONS: ItemCondition[] = ['good', 'fair', 'damaged', 'missing', 'not_applicable']
 
@@ -14,6 +14,13 @@ interface InspectionWithRelations extends Inspection {
   tenant: Tenant | null
   unit: { id: string; name: string } | null
   items: (InspectionItem & { attachments?: Attachment[] })[]
+}
+
+interface PendingSnag {
+  id: string
+  snag_number: number
+  title: string
+  status: SnagStatus
 }
 
 function groupByRoom(items: InspectionItem[]) {
@@ -26,7 +33,7 @@ function groupByRoom(items: InspectionItem[]) {
   return order.map(room => ({ room, items: groups[room] }))
 }
 
-export default function InspectionClient({ inspection }: { inspection: InspectionWithRelations }) {
+export default function InspectionClient({ inspection, pendingSnags }: { inspection: InspectionWithRelations; pendingSnags: PendingSnag[] }) {
   const [items, setItems] = useState(inspection.items)
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>(
     Object.fromEntries(inspection.items.map(i => [i.id, i.note ?? '']))
@@ -217,6 +224,34 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-medium text-amber-700">
           <CloudOff className="h-3.5 w-3.5 flex-shrink-0" />
           {pendingCount} change{pendingCount > 1 ? 's' : ''} waiting for signal — will save automatically once you're back online.
+        </div>
+      )}
+
+      {inspection.type === 'move_in' && pendingSnags.length > 0 && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-rose-700">
+            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+            {pendingSnags.length} unresolved snag{pendingSnags.length > 1 ? 's' : ''} on this unit — not yet fixed
+          </p>
+          <div className="space-y-1">
+            {pendingSnags.map(s => {
+              const cfg = STATUS_CONFIG[s.status]
+              return (
+                <Link
+                  key={s.id}
+                  href={`/snags/${s.id}`}
+                  target="_blank"
+                  className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs hover:bg-rose-100 transition-colors"
+                >
+                  <span className="font-mono text-slate-400">#{s.snag_number}</span>
+                  <span className="flex-1 truncate text-slate-700">{s.title}</span>
+                  <span className={`flex-shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.color}`}>
+                    {cfg.label}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
         </div>
       )}
 

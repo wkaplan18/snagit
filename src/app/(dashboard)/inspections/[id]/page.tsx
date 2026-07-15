@@ -31,5 +31,14 @@ export default async function InspectionPage({ params }: { params: Promise<{ id:
   const rawUnit = inspection.unit
   const unit = Array.isArray(rawUnit) ? rawUnit[0] ?? null : rawUnit
 
-  return <InspectionClient inspection={{ ...inspection, tenant, unit }} />
+  // Flag unresolved snags on this unit so an inspector can see, on move-in, whether
+  // anything from a previous tenant's move-out was never actually fixed.
+  const { data: pendingSnags } = await supabase
+    .from('snags')
+    .select('id, snag_number, title, status')
+    .eq('unit_id', inspection.unit_id)
+    .not('status', 'in', '(approved,closed)')
+    .order('created_at', { ascending: false })
+
+  return <InspectionClient inspection={{ ...inspection, tenant, unit }} pendingSnags={pendingSnags ?? []} />
 }
