@@ -53,6 +53,22 @@ export async function POST(req: NextRequest) {
   const { data: unit } = await admin.from('units').select('id, unit_type').eq('id', unit_id).single()
   if (!unit) return NextResponse.json({ error: 'Unit not found' }, { status: 404 })
 
+  const { data: existingMoveIn } = await admin
+    .from('inspections')
+    .select('id')
+    .eq('tenant_id', tenant_id)
+    .eq('type', 'move_in')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (type === 'move_in' && existingMoveIn) {
+    return NextResponse.json({ error: 'This tenant already has a move-in inspection on record' }, { status: 400 })
+  }
+  if (type === 'move_out' && !existingMoveIn) {
+    return NextResponse.json({ error: 'A move-in inspection must be completed for this tenant before a move-out inspection can be started' }, { status: 400 })
+  }
+
   // Prefer a template scoped to this unit's type; fall back to an org-wide template
   const { data: templates } = await admin
     .from('inspection_templates')
@@ -71,18 +87,7 @@ export async function POST(req: NextRequest) {
     .eq('template_id', template.id)
     .order('room_order', { ascending: true })
 
-  let linkedMoveInId: string | null = null
-  if (type === 'move_out') {
-    const { data: moveIn } = await admin
-      .from('inspections')
-      .select('id')
-      .eq('tenant_id', tenant_id)
-      .eq('type', 'move_in')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    linkedMoveInId = moveIn?.id ?? null
-  }
+  const linkedMoveInId = type === 'move_out' ? (existingMoveIn?.id ?? null) : null
 
   const { data: inspection, error: insertError } = await admin
     .from('inspections')

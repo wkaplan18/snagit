@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Home, User, Plus, ClipboardList, ChevronRight, Loader2, X, LogOut } from 'lucide-react'
+import { ArrowLeft, Home, User, Plus, ClipboardList, ChevronRight, Loader2, X, LogOut, Scale } from 'lucide-react'
 import type { Tenant, Inspection, DashboardTerms } from '@/types'
 
 interface UnitInfo {
@@ -38,6 +38,18 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
 
   const activeTenant = tenants.find(t => t.status === 'active') ?? null
   const pastTenants = tenants.filter(t => t.status === 'ended')
+
+  const hasMoveIn = activeTenant
+    ? inspections.some(i => i.type === 'move_in' && i.tenant_id === activeTenant.id)
+    : false
+
+  const compareTarget = inspections
+    .filter(i => i.type === 'move_out' && i.linked_move_in_inspection_id)
+    .sort((a, b) => {
+      if (a.status === 'completed' && b.status !== 'completed') return -1
+      if (b.status === 'completed' && a.status !== 'completed') return 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })[0] ?? null
 
   async function addTenant() {
     if (!fullName.trim() || !leaseStart) return
@@ -111,16 +123,26 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
         <ArrowLeft className="h-4 w-4" /> {unit.project?.name ?? 'Back'}
       </Link>
 
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF]">
-          <Home className="h-5 w-5 text-[#1A56DB]" />
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#EEF4FF]">
+            <Home className="h-5 w-5 text-[#1A56DB]" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{unit.name}</h1>
+            <p className="text-xs capitalize text-slate-400">
+              {unit.unit_type.replace(/_/g, ' ')}{unit.floor_number != null ? ` · Floor ${unit.floor_number}` : ''}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">{unit.name}</h1>
-          <p className="text-xs capitalize text-slate-400">
-            {unit.unit_type.replace(/_/g, ' ')}{unit.floor_number != null ? ` · Floor ${unit.floor_number}` : ''}
-          </p>
-        </div>
+        {compareTarget && (
+          <Link
+            href={`/inspections/${compareTarget.id}/compare`}
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+          >
+            <Scale className="h-3.5 w-3.5" /> Compare
+          </Link>
+        )}
       </div>
 
       {/* Tenant section */}
@@ -147,21 +169,24 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
             </button>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button
-              onClick={() => startInspection('move_in')}
-              disabled={startingType !== null}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#1A56DB] py-2.5 text-sm font-bold text-white active:scale-[0.97] transition-[transform,opacity] disabled:opacity-50"
-            >
-              {startingType === 'move_in' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Move-in inspection'}
-            </button>
-            <button
-              onClick={() => startInspection('move_out')}
-              disabled={startingType !== null}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2.5 text-sm font-bold text-slate-700 active:scale-[0.97] transition-[transform,opacity] disabled:opacity-50"
-            >
-              {startingType === 'move_out' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Move-out inspection'}
-            </button>
+          <div className="mt-3">
+            {!hasMoveIn ? (
+              <button
+                onClick={() => startInspection('move_in')}
+                disabled={startingType !== null}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1A56DB] py-2.5 text-sm font-bold text-white active:scale-[0.97] transition-[transform,opacity] disabled:opacity-50"
+              >
+                {startingType === 'move_in' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Move-in inspection'}
+              </button>
+            ) : (
+              <button
+                onClick={() => startInspection('move_out')}
+                disabled={startingType !== null}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2.5 text-sm font-bold text-slate-700 active:scale-[0.97] transition-[transform,opacity] disabled:opacity-50"
+              >
+                {startingType === 'move_out' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Move-out inspection'}
+              </button>
+            )}
           </div>
         </div>
       ) : (
