@@ -25,6 +25,9 @@ export default function InspectionTemplatesClient({ initialTemplates }: { initia
       if (res.ok) {
         const created = await res.json()
         router.push(`/settings/inspection-templates/${created.id}`)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Could not create checklist. Please try again.')
       }
     } finally {
       setSaving(false)

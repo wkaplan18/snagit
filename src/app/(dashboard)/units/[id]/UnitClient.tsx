@@ -76,6 +76,7 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
         body: JSON.stringify({ status: 'ended', move_out_date: new Date().toISOString().slice(0, 10) }),
       })
       if (res.ok) router.refresh()
+      else alert('Could not end tenancy. Please try again.')
     } finally {
       setEndingTenancy(false)
     }
