@@ -228,7 +228,7 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
             </div>
           )}
 
-          {!isHotel && showAddUnit && (
+          {(!isHotel || hasTenantPortal) && showAddUnit && (
             <form onSubmit={handleAddUnit} className="sf-card mb-4 space-y-3 p-4">
               <div className={false ? '' : 'grid grid-cols-2 gap-3'}>
                 <div>
