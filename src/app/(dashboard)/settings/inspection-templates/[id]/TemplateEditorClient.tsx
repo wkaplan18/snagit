@@ -137,19 +137,21 @@ export default function TemplateEditorClient({ template }: { template: Inspectio
                   </button>
                 </div>
               ))}
-              <div className="flex items-center gap-2">
+              <form
+                onSubmit={e => { e.preventDefault(); addItem(ri) }}
+                className="flex items-center gap-2"
+              >
                 <input
                   type="text"
                   value={newItemDraft[ri] ?? ''}
                   onChange={e => setNewItemDraft(d => ({ ...d, [ri]: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') addItem(ri) }}
                   placeholder="Add item (e.g. Walls, Ceiling)"
                   className="sf-input flex-1 py-2 text-sm"
                 />
-                <button onClick={() => addItem(ri)} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200">
+                <button type="submit" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200">
                   <Plus className="h-4 w-4" />
                 </button>
-              </div>
+              </form>
             </div>
           </div>
         ))}
