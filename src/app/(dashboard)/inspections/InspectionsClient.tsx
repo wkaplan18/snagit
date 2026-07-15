@@ -39,7 +39,10 @@ export default function InspectionsClient({ initialInspections }: { initialInspe
                     {insp.unit?.name ?? 'Unit'} · {insp.type === 'move_in' ? 'Move-in' : 'Move-out'}
                   </p>
                   <p className="text-xs text-slate-400">
-                    {insp.tenant?.full_name ?? '—'} · {new Date(insp.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+                    {insp.tenant?.full_name ?? '—'} ·{' '}
+                    {insp.status === 'completed' && insp.completed_at
+                      ? new Date(insp.completed_at).toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : new Date(insp.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
                   </p>
                 </div>
                 <span className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${cfg.bg} ${cfg.color}`}>

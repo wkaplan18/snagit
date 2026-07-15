@@ -218,6 +218,11 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">
                   {insp.type === 'move_in' ? 'Move-in' : 'Move-out'} inspection
+                  {insp.status === 'completed' && insp.completed_at && (
+                    <span className="ml-1.5 font-normal text-slate-400">
+                      · {new Date(insp.completed_at).toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-slate-400">
                   {insp.tenant?.full_name ?? '—'} · {INSPECTION_STATUS_LABEL[insp.status]}

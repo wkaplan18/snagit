@@ -34,6 +34,7 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [status, setStatus] = useState<InspectionStatus>(inspection.status)
+  const [completedAt, setCompletedAt] = useState(inspection.completed_at)
   const [tenantSigUrl, setTenantSigUrl] = useState(inspection.tenant_signature_url)
   const [inspectorSigUrl, setInspectorSigUrl] = useState(inspection.inspector_signature_url)
   const [savingSig, setSavingSig] = useState<'tenant' | 'inspector' | null>(null)
@@ -162,7 +163,9 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
     try {
       const res = await fetch(`/api/inspections/${inspection.id}/complete`, { method: 'POST' })
       if (res.ok) {
+        const data = await res.json()
         setStatus('completed')
+        setCompletedAt(data.completed_at)
       } else {
         const data = await res.json().catch(() => ({}))
         alert(data.error ?? 'Could not complete inspection.')
@@ -362,8 +365,13 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
           </div>
 
           {status === 'completed' && (
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-green-50 py-3 text-sm font-semibold text-green-700">
-              <CheckCircle2 className="h-4 w-4" /> Inspection completed
+            <div className="mt-4 flex flex-col items-center justify-center gap-1 rounded-xl bg-green-50 py-3 text-sm font-semibold text-green-700">
+              <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Inspection completed</span>
+              {completedAt && (
+                <span className="text-xs font-normal text-green-600">
+                  {new Date(completedAt).toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
           )}
         </div>

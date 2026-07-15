@@ -18,9 +18,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Both tenant and inspector signatures are required before completing' }, { status: 400 })
   }
 
+  const now = new Date().toISOString()
   const { data, error } = await supabase
     .from('inspections')
-    .update({ status: 'completed', updated_at: new Date().toISOString() })
+    .update({ status: 'completed', completed_at: now, updated_at: now })
     .eq('id', id)
     .select('*')
     .single()
