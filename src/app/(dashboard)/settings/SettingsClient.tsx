@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Check, LogOut, Building2, Users, X, Send, Mail, CreditCard, ChevronRight } from 'lucide-react'
+import { ArrowLeft, User, Check, LogOut, Building2, Users, X, Send, Mail, CreditCard, ChevronRight, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
 import { DASHBOARD_TERMS, ORG_TYPE_CONFIG } from '@/types'
 import type { OrgType } from '@/types'
@@ -179,6 +179,19 @@ export default function SettingsClient({ email, currentUserId, profile, orgName,
           <div className="flex-1">
             <p className="text-sm font-semibold text-slate-900">Billing & Plan</p>
             <p className="text-xs text-slate-500">Subscription, payments and plan changes</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-slate-300" />
+        </Link>
+      )}
+
+      {canManageTeam && (orgType === 'property_manager' || orgType === 'body_corporate') && (
+        <Link href="/settings/inspection-templates" className="sf-card mb-4 flex items-center gap-3 p-4 transition-opacity hover:opacity-80 active:scale-[0.99]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FF]">
+            <ClipboardList className="h-5 w-5 text-[#1A56DB]" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-900">Inspection Checklists</p>
+            <p className="text-xs text-slate-500">Templates used for move-in / move-out audits</p>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-300" />
         </Link>
