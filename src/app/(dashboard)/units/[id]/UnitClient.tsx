@@ -42,6 +42,9 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
   const hasMoveIn = activeTenant
     ? inspections.some(i => i.type === 'move_in' && i.tenant_id === activeTenant.id)
     : false
+  const hasMoveOut = activeTenant
+    ? inspections.some(i => i.type === 'move_out' && i.tenant_id === activeTenant.id)
+    : false
 
   const compareTarget = inspections
     .filter(i => i.type === 'move_out' && i.linked_move_in_inspection_id)
@@ -178,7 +181,7 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
               >
                 {startingType === 'move_in' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Move-in inspection'}
               </button>
-            ) : (
+            ) : !hasMoveOut ? (
               <button
                 onClick={() => startInspection('move_out')}
                 disabled={startingType !== null}
@@ -186,6 +189,10 @@ export default function UnitClient({ unit, tenants, inspections, terms }: {
               >
                 {startingType === 'move_out' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Move-out inspection'}
               </button>
+            ) : (
+              <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-center text-xs text-slate-500">
+                Move-out inspection already done for this tenant — end the tenancy when ready.
+              </p>
             )}
           </div>
         </div>

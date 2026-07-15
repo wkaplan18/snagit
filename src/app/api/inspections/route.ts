@@ -69,6 +69,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A move-in inspection must be completed for this tenant before a move-out inspection can be started' }, { status: 400 })
   }
 
+  if (type === 'move_out') {
+    const { data: existingMoveOut } = await admin
+      .from('inspections')
+      .select('id')
+      .eq('tenant_id', tenant_id)
+      .eq('type', 'move_out')
+      .limit(1)
+      .maybeSingle()
+    if (existingMoveOut) {
+      return NextResponse.json({ error: 'This tenant already has a move-out inspection on record' }, { status: 400 })
+    }
+  }
+
   // Prefer a template scoped to this unit's type; fall back to an org-wide template
   const { data: templates } = await admin
     .from('inspection_templates')
