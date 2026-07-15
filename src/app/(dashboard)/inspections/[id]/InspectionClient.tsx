@@ -173,7 +173,7 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-32 pt-6">
+    <div className="mx-auto max-w-lg px-4 pb-24 pt-6">
       <Link
         href={inspection.unit ? `/units/${inspection.unit.id}` : '/inspections'}
         className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700"
@@ -370,27 +370,25 @@ export default function InspectionClient({ inspection }: { inspection: Inspectio
       )}
 
       {(!readOnly || (status === 'submitted' && tenantSigUrl && inspectorSigUrl)) && (
-        <div className="fixed inset-x-0 bottom-0 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-sm">
-          <div className="mx-auto max-w-lg">
-            {!readOnly ? (
-              <button
-                onClick={submitInspection}
-                disabled={submitting}
-                className="sf-btn-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
-              >
-                {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : 'Submit inspection'}
-              </button>
-            ) : (
-              <button
-                onClick={completeInspection}
-                disabled={completing || savingSig !== null}
-                className="sf-btn-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
-              >
-                {completing ? <><Loader2 className="h-4 w-4 animate-spin" /> Completing…</> : 'Complete inspection'}
-              </button>
-            )}
-          </div>
-        </div>
+        <>
+          {!readOnly ? (
+            <button
+              onClick={submitInspection}
+              disabled={submitting}
+              className="sf-btn-primary mt-5 flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
+            >
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : 'Submit inspection'}
+            </button>
+          ) : (
+            <button
+              onClick={completeInspection}
+              disabled={completing || savingSig !== null}
+              className="sf-btn-primary mt-5 flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
+            >
+              {completing ? <><Loader2 className="h-4 w-4 animate-spin" /> Completing…</> : 'Complete inspection'}
+            </button>
+          )}
+        </>
       )}
     </div>
   )

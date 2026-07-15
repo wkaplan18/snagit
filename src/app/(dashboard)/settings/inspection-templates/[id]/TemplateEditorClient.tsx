@@ -83,7 +83,7 @@ export default function TemplateEditorClient({ template }: { template: Inspectio
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-32 pt-6">
+    <div className="mx-auto max-w-lg px-4 pb-24 pt-6">
       <div className="mb-4 flex items-center gap-3">
         <button
           onClick={() => router.push('/settings/inspection-templates')}
@@ -162,17 +162,13 @@ export default function TemplateEditorClient({ template }: { template: Inspectio
         <Plus className="h-4 w-4" /> Add room
       </button>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur-sm">
-        <div className="mx-auto max-w-lg">
-          <button
-            onClick={save}
-            disabled={!name.trim() || saving}
-            className="sf-btn-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
-          >
-            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : 'Save checklist'}
-          </button>
-        </div>
-      </div>
+      <button
+        onClick={save}
+        disabled={!name.trim() || saving}
+        className="sf-btn-primary mt-5 flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-40"
+      >
+        {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : 'Save checklist'}
+      </button>
     </div>
   )
 }
