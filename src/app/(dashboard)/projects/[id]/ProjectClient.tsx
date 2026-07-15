@@ -60,9 +60,9 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
   const isHotel = orgType === 'hotel' || orgType === 'property_manager' || orgType === 'body_corporate'
   const hasTenantPortal = orgType === 'property_manager' || orgType === 'body_corporate'
   const [linkCopied, setLinkCopied] = useState(false)
-  const displayUnits = isHotel ? units.filter(u => (openCountsByUnit[u.id] ?? 0) > 0) : units
-  const unitTypeOptions = isHotel ? HOTEL_UNIT_TYPES : BUILDER_UNIT_TYPES
-  const [unitType, setUnitType] = useState<UnitType>(isHotel ? 'standard_room' : 'apartment')
+  const displayUnits = orgType === 'hotel' ? units.filter(u => (openCountsByUnit[u.id] ?? 0) > 0) : units
+  const unitTypeOptions = orgType === 'hotel' ? HOTEL_UNIT_TYPES : BUILDER_UNIT_TYPES
+  const [unitType, setUnitType] = useState<UnitType>(orgType === 'hotel' ? 'standard_room' : 'apartment')
   const [seedRooms, setSeedRooms] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -122,7 +122,7 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
     }
 
     if (seedRooms && !false) {
-      const roomList = isHotel ? DEFAULT_HOTEL_ROOM_AREAS : DEFAULT_ROOMS
+      const roomList = orgType === 'hotel' ? DEFAULT_HOTEL_ROOM_AREAS : DEFAULT_ROOMS
       await supabase.from('rooms').insert(
         roomList.map((name, i) => ({ unit_id: unit.id, name, room_order: i }))
       )
@@ -194,7 +194,7 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
         <>
           <div className="mb-3 mt-6 flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-900">{terms.units}</h2>
-            {!isHotel && (
+            {(!isHotel || hasTenantPortal) && (
               <button onClick={() => setShowAddUnit(v => !v)} className="inline-flex items-center gap-1 text-sm font-medium text-[#1A56DB]">
                 <Plus className="h-4 w-4" /> Add {terms.unit.toLowerCase()}
               </button>
@@ -283,7 +283,7 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-900">{u.name}</p>
-                          {!isHotel && <p className="text-xs capitalize text-slate-400">{u.unit_type.replace(/_/g, ' ')}</p>}
+                          {orgType !== 'hotel' && <p className="text-xs capitalize text-slate-400">{u.unit_type.replace(/_/g, ' ')}</p>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
