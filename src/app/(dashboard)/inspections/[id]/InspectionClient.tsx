@@ -231,7 +231,7 @@ export default function InspectionClient({ inspection, pendingSnags }: { inspect
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-rose-700">
             <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-            {pendingSnags.length} unresolved snag{pendingSnags.length > 1 ? 's' : ''} on this unit — not yet fixed
+            {pendingSnags.length} unresolved snag{pendingSnags.length > 1 ? 's' : ''} on this unit — not yet fixed or approved
           </p>
           <div className="space-y-1">
             {pendingSnags.map(s => {
