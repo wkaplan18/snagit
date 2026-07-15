@@ -52,7 +52,7 @@ function UnitSnags({ projectId, unitId, unitName, snags, terms, bare = false }: 
   )
 }
 
-export default function ProjectClient({ project, units, contractors, terms, orgType, openCountsByUnit, snagsByUnit }: { project: ProjectInfo; units: UnitRow[]; contractors: Contractor[]; terms: DashboardTerms; orgType: OrgType; openCountsByUnit: Record<string, number>; snagsByUnit: Record<string, Snag[]> }) {
+export default function ProjectClient({ project, units, contractors, terms, orgType, openCountsByUnit, snagsByUnit, tenancyByUnit }: { project: ProjectInfo; units: UnitRow[]; contractors: Contractor[]; terms: DashboardTerms; orgType: OrgType; openCountsByUnit: Record<string, number>; snagsByUnit: Record<string, Snag[]>; tenancyByUnit: Record<string, { tenantName: string; moveInCompleted: boolean }> }) {
   const isSingleProperty = units.length === 1 && units[0].name === project.name
   const [openUnit, setOpenUnit] = useState<string | null>(units.length === 1 ? units[0].id : null)
   const [showAddUnit, setShowAddUnit] = useState(units.length === 0)
@@ -284,6 +284,15 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                         <div>
                           <p className="text-sm font-semibold text-slate-900">{u.name}</p>
                           {orgType !== 'hotel' && <p className="text-xs capitalize text-slate-400">{u.unit_type.replace(/_/g, ' ')}</p>}
+                          {hasTenantPortal && (
+                            tenancyByUnit[u.id] ? (
+                              <p className={`text-xs font-medium ${tenancyByUnit[u.id].moveInCompleted ? 'text-green-600' : 'text-amber-600'}`}>
+                                {tenancyByUnit[u.id].moveInCompleted ? 'Tenanted' : 'Pending move-in'} · {tenancyByUnit[u.id].tenantName}
+                              </p>
+                            ) : (
+                              <p className="text-xs font-medium text-slate-400">Vacant</p>
+                            )
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

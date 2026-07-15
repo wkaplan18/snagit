@@ -46,5 +46,25 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     rooms: ((u.rooms ?? []) as Room[]).sort((a, b) => a.room_order - b.room_order),
   }))
 
-  return <ProjectClient project={project} units={flatUnits} contractors={contractors ?? []} terms={terms} orgType={orgType} openCountsByUnit={openCountsByUnit} snagsByUnit={snagsByUnit} />
+  // Tenancy status per unit (property_manager/body_corporate only, but cheap enough to always compute)
+  const unitIds = flatUnits.map(u => u.id)
+  const { data: activeTenants } = unitIds.length
+    ? await supabase.from('tenants').select('id, unit_id, full_name').eq('status', 'active').in('unit_id', unitIds)
+    : { data: [] }
+
+  const tenantIds = (activeTenants ?? []).map(t => t.id)
+  const { data: moveInInspections } = tenantIds.length
+    ? await supabase.from('inspections').select('tenant_id, status').eq('type', 'move_in').in('tenant_id', tenantIds)
+    : { data: [] }
+
+  const moveInCompletedByTenant = new Set(
+    (moveInInspections ?? []).filter(i => i.status === 'completed').map(i => i.tenant_id)
+  )
+
+  const tenancyByUnit: Record<string, { tenantName: string; moveInCompleted: boolean }> = {}
+  for (const t of activeTenants ?? []) {
+    tenancyByUnit[t.unit_id] = { tenantName: t.full_name, moveInCompleted: moveInCompletedByTenant.has(t.id) }
+  }
+
+  return <ProjectClient project={project} units={flatUnits} contractors={contractors ?? []} terms={terms} orgType={orgType} openCountsByUnit={openCountsByUnit} snagsByUnit={snagsByUnit} tenancyByUnit={tenancyByUnit} />
 }
