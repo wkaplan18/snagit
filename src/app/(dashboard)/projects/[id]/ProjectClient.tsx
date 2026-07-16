@@ -305,10 +305,11 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
                           <Link
                             href={`/units/${u.id}`}
                             onClick={e => e.stopPropagation()}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#1A56DB]"
+                            className="flex h-8 items-center gap-1 rounded-lg px-2 text-slate-400 hover:bg-slate-100 hover:text-[#1A56DB]"
                             title="Tenants & inspections"
                           >
                             <ClipboardList className="h-4 w-4" />
+                            <span className="text-xs font-medium">Tenants</span>
                           </Link>
                         )}
                         {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
