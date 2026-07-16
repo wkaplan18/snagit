@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Home, ChevronDown, ChevronRight, Camera, MapPin, Printer, AlertCircle, X, Loader2, Link2, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Plus, Home, ChevronDown, ChevronRight, Camera, MapPin, Printer, AlertCircle, X, Loader2, Link2, ClipboardList, Search } from 'lucide-react'
 import { waLink } from '@/lib/whatsappLink'
 import SnagCard from '@/components/snags/SnagCard'
 import { DEFAULT_ROOMS, DEFAULT_HOTEL_ROOM_AREAS, HOTEL_UNIT_TYPES, BUILDER_UNIT_TYPES, type Contractor, type DashboardTerms, type OrgType, type Room, type Snag, type UnitType } from '@/types'
@@ -61,6 +61,12 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
   const hasTenantPortal = orgType === 'property_manager' || orgType === 'body_corporate'
   const [linkCopied, setLinkCopied] = useState(false)
   const displayUnits = orgType === 'hotel' ? units.filter(u => (openCountsByUnit[u.id] ?? 0) > 0) : units
+  const [unitSearch, setUnitSearch] = useState('')
+  const showUnitSearch = displayUnits.length > 20
+  const unitQuery = unitSearch.trim().toLowerCase()
+  const visibleUnits = showUnitSearch && unitQuery
+    ? displayUnits.filter(u => `${u.name} ${tenancyByUnit[u.id]?.tenantName ?? ''}`.toLowerCase().includes(unitQuery))
+    : displayUnits
   const unitTypeOptions = orgType === 'hotel' ? HOTEL_UNIT_TYPES : BUILDER_UNIT_TYPES
   const [unitType, setUnitType] = useState<UnitType>(orgType === 'hotel' ? 'standard_room' : 'apartment')
   const [seedRooms, setSeedRooms] = useState(true)
@@ -265,7 +271,22 @@ export default function ProjectClient({ project, units, contractors, terms, orgT
             </div>
           ) : (
             <div className="space-y-3">
-              {displayUnits.map(u => {
+              {showUnitSearch && (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={unitSearch}
+                    onChange={e => setUnitSearch(e.target.value)}
+                    placeholder={hasTenantPortal ? `Search ${terms.units.toLowerCase()} or tenants…` : `Search ${terms.units.toLowerCase()}…`}
+                    className="sf-input pl-9"
+                  />
+                </div>
+              )}
+              {visibleUnits.length === 0 && unitQuery && (
+                <p className="py-6 text-center text-sm text-slate-400">No matches for &ldquo;{unitSearch}&rdquo;</p>
+              )}
+              {visibleUnits.map(u => {
                 const open = openUnit === u.id
                 const openCount = openCountsByUnit[u.id] ?? 0
                 return (
