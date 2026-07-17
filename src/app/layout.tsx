@@ -19,6 +19,11 @@ export const metadata: Metadata = {
     title: 'SnagIT',
   },
   icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+    ],
+    shortcut: '/icons/icon-192.png',
     apple: '/icons/apple-touch-icon.png',
   },
 }
