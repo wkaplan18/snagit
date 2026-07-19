@@ -168,6 +168,8 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
   const searchParams = useSearchParams()
   const qProjectId = searchParams.get('projectId') ?? ''
   const qUnitId = searchParams.get('unitId') ?? ''
+  // Entered from a property page → all exits return there; otherwise fall back to the snags list
+  const donePath = qProjectId ? `/projects/${qProjectId}` : '/snags'
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -467,7 +469,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
       setWaName(contractor.name)
       setStep('whatsapp')
     } else {
-      router.push('/snags')
+      router.push(donePath)
       router.refresh()
     }
     setContractorBusy(false)
@@ -528,7 +530,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
       <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-white">
         <div className="border-b border-slate-200 px-4 pt-safe pb-4">
           <div className="flex items-center gap-3 pt-3">
-            <button onClick={() => router.push('/snags')} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500">
+            <button onClick={() => router.push(donePath)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500">
               <X className="h-4 w-4" />
             </button>
             <div>
@@ -569,7 +571,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
         <div className="border-b border-slate-200 px-4 pt-safe pb-4">
           <div className="flex items-center gap-3 pt-3">
             <button
-              onClick={() => hasProjectStep ? setStep('project') : router.push('/snags')}
+              onClick={() => hasProjectStep ? setStep('project') : router.push(donePath)}
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -613,7 +615,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
       <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col bg-white">
         <div className="border-b border-slate-200 px-4 pt-safe pb-4">
           <div className="flex items-center gap-3 pt-3">
-            <button onClick={() => router.push('/snags')} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500">
+            <button onClick={() => router.push(donePath)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500">
               <X className="h-4 w-4" />
             </button>
             <div>
@@ -952,7 +954,7 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
         </div>
 
         <div className="border-t border-slate-100 px-4 pb-28 pt-3">
-          <button onClick={() => router.push('/snags')} className="w-full py-2 text-sm text-slate-400 underline underline-offset-2">
+          <button onClick={() => router.push(donePath)} className="w-full py-2 text-sm text-slate-400 underline underline-offset-2">
             Skip — assign later
           </button>
         </div>
@@ -979,14 +981,14 @@ export default function AddJobClient({ orgId: initialOrgId, orgType: initialOrgT
           href={waUrl}
           target="_blank"
           rel="noopener"
-          onClick={() => router.push('/snags')}
+          onClick={() => router.push(donePath)}
           className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-4 text-base font-bold text-white hover:bg-[#1EBE5B] active:scale-[0.98] transition-[transform,opacity]"
         >
           {WA_ICON}
           Send to {waName} via WhatsApp
         </a>
       )}
-      <button onClick={() => router.push('/snags')} className="text-sm text-slate-400 underline underline-offset-2">
+      <button onClick={() => router.push(donePath)} className="text-sm text-slate-400 underline underline-offset-2">
         Done
       </button>
     </div>
